@@ -5,6 +5,7 @@ import { EMPTY_OBJ, isArray } from '@vue/shared'
 // Conceptually, it's easier to think of a dependency as a Dep class
 // which maintains a Set of subscribers, but we simply store them as
 // raw Sets to reduce memory overhead.
+// vue2.x Watcher keeps dep, but now it uses weakMap keep dep.
 type Dep = Set<ReactiveEffect>
 type KeyToDepMap = Map<any, Dep>
 const targetMap = new WeakMap<any, KeyToDepMap>()
@@ -12,8 +13,11 @@ const targetMap = new WeakMap<any, KeyToDepMap>()
 export interface ReactiveEffect<T = any> {
   (...args: any[]): T
   _isEffect: true
+  // 唯一ID
   id: number
+  // 当前是否激活
   active: boolean
+  // Real function
   raw: () => T
   deps: Array<Dep>
   options: ReactiveEffectOptions
@@ -22,6 +26,9 @@ export interface ReactiveEffect<T = any> {
 export interface ReactiveEffectOptions {
   lazy?: boolean
   computed?: boolean
+  /**
+   * What scheduler used for
+   */
   scheduler?: (job: ReactiveEffect) => void
   onTrack?: (event: DebuggerEvent) => void
   onTrigger?: (event: DebuggerEvent) => void
@@ -41,6 +48,9 @@ export interface DebuggerEventExtraInfo {
   oldTarget?: Map<any, any> | Set<any>
 }
 
+/**
+ * used for store effect
+ */
 const effectStack: ReactiveEffect[] = []
 let activeEffect: ReactiveEffect | undefined
 
@@ -65,6 +75,11 @@ export function effect<T = any>(
   return effect
 }
 
+/**
+ * If effect is active call cleanup effect and call on stop hook.
+ * and set effect's active to false.
+ * @param effect
+ */
 export function stop(effect: ReactiveEffect) {
   if (effect.active) {
     cleanup(effect)
@@ -77,6 +92,11 @@ export function stop(effect: ReactiveEffect) {
 
 let uid = 0
 
+/**
+ * create a effect function which wrap the fn and before call fn just call enable track set activeeffct after call reset track and pop statck
+ * @param fn
+ * @param options
+ */
 function createReactiveEffect<T = any>(
   fn: (...args: any[]) => T,
   options: ReactiveEffectOptions
@@ -108,6 +128,10 @@ function createReactiveEffect<T = any>(
   return effect
 }
 
+/**
+ * delete deps's reference which reference to effcet and clean up effect's deps;
+ * @param effect
+ */
 function cleanup(effect: ReactiveEffect) {
   const { deps } = effect
   if (deps.length) {
@@ -121,21 +145,38 @@ function cleanup(effect: ReactiveEffect) {
 let shouldTrack = true
 const trackStack: boolean[] = []
 
+/**
+ * push pre shouldtrack into stack and set shouldtrack to false
+ */
 export function pauseTracking() {
   trackStack.push(shouldTrack)
   shouldTrack = false
 }
 
+/**
+ * push pre shouldtrack into stack and set shouldtrack to true
+ */
 export function enableTracking() {
   trackStack.push(shouldTrack)
   shouldTrack = true
 }
 
+/**
+ * set shouldtrack to pre shouldtrack(trackstack's top)
+ */
 export function resetTracking() {
   const last = trackStack.pop()
   shouldTrack = last === undefined ? true : last
 }
 
+/**
+ * add dep refrence to active effect push dep to effect
+ *
+ * weakMap<target, Map<key, Set<ReactiveEffect>>>
+ * @param target
+ * @param type
+ * @param key
+ */
 export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (!shouldTrack || activeEffect === undefined) {
     return
@@ -162,6 +203,15 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
   }
 }
 
+/**
+ *
+ * @param target observed object
+ * @param type
+ * @param key
+ * @param newValue
+ * @param oldValue
+ * @param oldTarget
+ */
 export function trigger(
   target: object,
   type: TriggerOpTypes,

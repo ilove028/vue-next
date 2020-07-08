@@ -19,6 +19,12 @@ export interface WritableComputedOptions<T> {
   set: ComputedSetter<T>
 }
 
+/**
+ * computedB = computed(c() => refA.value + 'AA');
+ * effect(function d() { return computedB + 11; })
+ * refA.value -> c -> trigger computedB value change case d run
+ * @param getter
+ */
 export function computed<T>(getter: ComputedGetter<T>): ComputedRef<T>
 export function computed<T>(
   options: WritableComputedOptions<T>
