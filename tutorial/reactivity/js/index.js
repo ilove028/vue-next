@@ -13,9 +13,23 @@ const sayRef = VueReactivity.customRef((track, trigger) => {
   }
 })
 
-VueReactivity.effect(() => {
-  console.log(computedB.value)
-})
+let effectTask = null
+VueReactivity.effect(
+  () => {
+    console.log(`${computedB.value} ${obj.name}`)
+  },
+  {
+    scheduler(effect) {
+      if (!effectTask) {
+        effectTask = effect
+        Promise.resolve().then(() => {
+          effectTask()
+          effectTask = null
+        })
+      }
+    }
+  }
+)
 
 // a.value = 'Button';
 // setTimeout(() => {
@@ -23,7 +37,5 @@ VueReactivity.effect(() => {
 // });
 
 a.value = 'Button'
-
-VueReactivity.stop(computedB)
-
-a.value = 'Ricky'
+console.log('----')
+obj.name = 'Ricky'

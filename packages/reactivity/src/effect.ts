@@ -230,6 +230,8 @@ export function trigger(
   const add = (effectsToAdd: Set<ReactiveEffect> | undefined) => {
     if (effectsToAdd) {
       effectsToAdd.forEach(effect => {
+        // foo.value++ has two operations get and set. get will track effect set will trigger effect and now effect === activeEffect
+        // which will case infinite loop; !shouldTrack maybe means activeEffect will not track so we should add effect
         if (effect !== activeEffect || !shouldTrack) {
           effects.add(effect)
         } else {
