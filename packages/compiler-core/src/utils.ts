@@ -135,6 +135,8 @@ export function advancePositionWithMutation(
 ): Position {
   let linesCount = 0
   let lastNewLinePos = -1
+  //     lastNewLinePos = 2
+  // "A\nB"
   for (let i = 0; i < numberOfCharacters; i++) {
     if (source.charCodeAt(i) === 10 /* newline char code */) {
       linesCount++

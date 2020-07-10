@@ -62,6 +62,7 @@ export function baseCompile(
   const isModuleMode = options.mode === 'module'
   /* istanbul ignore if */
   if (__BROWSER__) {
+    // 对于 Dom compiler , 不支持前缀，就是生成的代码用 with 包住 ctx，因为添加前缀操作需要 操作 js ast， 同样 Dom Complier 也不支持 module 模式。
     if (options.prefixIdentifiers === true) {
       onError(createCompilerError(ErrorCodes.X_PREFIX_ID_NOT_SUPPORTED))
     } else if (isModuleMode) {
@@ -72,9 +73,11 @@ export function baseCompile(
   const prefixIdentifiers =
     !__BROWSER__ && (options.prefixIdentifiers === true || isModuleMode)
   if (!prefixIdentifiers && options.cacheHandlers) {
+    // 对于 node 编译时， 如果不指定前缀，又想缓存 v-on 的 handler 也是不可以
     onError(createCompilerError(ErrorCodes.X_CACHE_HANDLER_NOT_SUPPORTED))
   }
   if (options.scopeId && !isModuleMode) {
+    // 指定了 scopeId ，但又不是 module 模式，那也是不可以的，常见的 module 模式就是 sfc 。
     onError(createCompilerError(ErrorCodes.X_SCOPE_ID_NOT_SUPPORTED))
   }
 
