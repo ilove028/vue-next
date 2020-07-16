@@ -94,6 +94,7 @@ export function processIf(
     dir.name !== 'else' &&
     (!dir.exp || !(dir.exp as SimpleExpressionNode).content.trim())
   ) {
+    // v-if 指令的表达式是不是为空，除了 v-else 以外都不能为空，如果表达式为空，创建表达式为 true 的 SimpleExpression，同时会上报 X_V_IF_NO_EXPRESSION 错误
     const loc = dir.exp ? dir.exp.loc : node.loc
     context.onError(
       createCompilerError(ErrorCodes.X_V_IF_NO_EXPRESSION, dir.loc)

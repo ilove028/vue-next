@@ -420,6 +420,7 @@ export function createStructuralDirectiveTransform(
       const { props } = node
       // structural directive transforms are not concerned with slots
       // as they are handled separately in vSlot.ts
+      // tagType 为 TEMPLATE 吗？ 就是 tag 为template ，且上面有 if,else,else-if,for,slot 指令时
       if (node.tagType === ElementTypes.TEMPLATE && props.some(isVSlot)) {
         return
       }
