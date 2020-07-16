@@ -165,6 +165,12 @@ export function assert(condition: boolean, msg?: string) {
   }
 }
 
+/**
+ * 寻找节点有没有该属性
+ * @param node
+ * @param name
+ * @param allowEmpty
+ */
 export function findDir(
   node: ElementNode,
   name: string | RegExp,

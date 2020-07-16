@@ -148,20 +148,24 @@ export function createTransformContext(
     directives: new Set(),
     hoists: [],
     imports: new Set(),
+    // temps、cached 分辨表示临时变量 和 缓存变量，这里用数字表示，是把这两个数当成了索引坐标。
+    // 这与hoists 有点类似，不过 hoists 是拿数组长度做下标，hoists 主要是存放静态节点
     temps: 0,
     cached: 0,
-    identifiers: Object.create(null),
+    identifiers: Object.create(null), // identifiers 表示用到变量，主要防止变量冲突，同时采用计数的原因，也有点像垃圾回收
+    // 用计数来标记所处的环境
     scopes: {
       vFor: 0,
       vSlot: 0,
       vPre: 0,
       vOnce: 0
     },
-    parent: null,
+    parent: null, // parent 表示 父级 AST
     currentNode: root,
-    childIndex: 0,
+    childIndex: 0, // 当前节点处于父级的 index
 
     // methods
+    // 操作 state 以及 节点进行节本的操作
     helper(name) {
       context.helpers.add(name)
       return name
