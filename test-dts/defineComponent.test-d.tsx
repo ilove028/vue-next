@@ -6,7 +6,10 @@ import {
   reactive,
   createApp,
   expectError,
-  expectType
+  expectType,
+  ComponentPublicInstance,
+  ComponentOptions,
+  SetupContext
 } from './index'
 
 describe('with object props', () => {
@@ -669,4 +672,11 @@ describe('emits', () => {
       expectError(this.$emit('nope'))
     }
   })
+})
+
+describe('componentOptions setup should be `SetupContext`', () => {
+  expect<ComponentOptions['setup']>({} as (
+    props: Record<string, any>,
+    ctx: SetupContext
+  ) => any)
 })
