@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <script src="../../packages/vue/dist/vue.global.js"></script>
   </head>
   <body>
     <script id="template" type="x-template">
-      <mx-title v-if="title" :title="title">
-      </mx-title>
+      <ul>
+        <li>Test</li>
+        <li v-for="(v, i) of items" :key="i">
+          <span>{{ i }}</span>
+          <mx-content :content="v" />
+        </li>
+      </ul>
     </script>
     <script src="./js/index.js"></script>
   </body>
