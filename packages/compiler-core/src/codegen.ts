@@ -198,9 +198,12 @@ export function generate(
   const genScopeId = !__BROWSER__ && scopeId != null && mode === 'module'
 
   // preambles
+  // 生成执行函数的前序部分，主要是方法（如createVnode、createBlock等）的引入，
+  // 和静态提升节点的声明
   if (!__BROWSER__ && mode === 'module') {
     genModulePreamble(ast, context, genScopeId)
   } else {
+    // 浏览器环境生成函数的前序代码
     genFunctionPreamble(ast, context)
   }
 
@@ -223,6 +226,11 @@ export function generate(
   indent()
 
   if (useWithBlock) {
+    // 如果判断需要使用with函数，会将_ctx声明为with函数体内的上下文，这样
+    // 在调用属性时会方便很多，比如不用with调用_ctx.test，启用with后直接
+    // 调用test就可以了，不过with函数因为传入未知作用域context，导致js
+    // 预编译阶段不会提前确定好各个相应声明的所属位置，因此运行时会慢一些，
+    // 因为要花一些时间查找声明所属位置
     push(`with (_ctx) {`)
     indent()
     // function mode const declarations should be inside with block
@@ -292,6 +300,11 @@ export function generate(
   }
 }
 
+/**
+ * 生成函数的前序部分，主要包括createVnode、createBlock等节点创建方法的引入，和静态节点提升的声明
+ * @param ast
+ * @param context
+ */
 function genFunctionPreamble(ast: RootNode, context: CodegenContext) {
   const {
     ssr,
@@ -442,6 +455,11 @@ function genAssets(
   }
 }
 
+/**
+ * 生成静态节点提升声明，形如const _hoisted_${i + 1} = ...这样的节点创建声明
+ * @param hoists
+ * @param context
+ */
 function genHoists(hoists: (JSChildNode | null)[], context: CodegenContext) {
   if (!hoists.length) {
     return
@@ -696,6 +714,11 @@ function genComment(node: CommentNode, context: CodegenContext) {
   }
 }
 
+/**
+ * 生成类似withDirectives((openBlock(true), createBlock(...args)), directivesObj)这样的代码，即render函数中的Vnode核心创建逻辑代码，和我们手写render类似。
+ * @param node
+ * @param context
+ */
 function genVNodeCall(node: VNodeCall, context: CodegenContext) {
   const { push, helper, pure } = context
   const {
