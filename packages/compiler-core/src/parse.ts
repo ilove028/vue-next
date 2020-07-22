@@ -566,6 +566,11 @@ function parseAttributes(
   return props
 }
 
+/**
+ * 解析属性 <div has v-for="(v,i) of datas" ></div>
+ * @param context
+ * @param nameSet
+ */
 function parseAttribute(
   context: ParserContext,
   nameSet: Set<string>
@@ -711,6 +716,10 @@ function parseAttribute(
   }
 }
 
+/**
+ * 只做纯文本解析对于指令由parseAttribute 分析
+ * @param context
+ */
 function parseAttributeValue(
   context: ParserContext
 ):
