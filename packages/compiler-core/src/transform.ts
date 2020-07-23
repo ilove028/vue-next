@@ -367,6 +367,7 @@ export function traverseNode(
       return
     } else {
       // node may have been replaced
+      // This happen e.g ignoreSideEffectTags like script and style.
       node = context.currentNode
     }
   }

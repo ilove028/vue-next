@@ -7,6 +7,7 @@
   <body>
     <script id="template" type="x-template">
       <ul>
+        <!-- Slot Teleport keep-alive 需要 -->
         <li>Test</li>
         <li v-for="(v, i) of items" :key="i">
           <span>{{ i }}</span>
