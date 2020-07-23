@@ -119,7 +119,12 @@ export interface ComponentOptionsBase<
     ctx: any,
     push: (item: any) => void,
     parentInstance: ComponentInternalInstance,
-    attrs?: Data
+    attrs: Data | undefined,
+    // for compiler-optimized bindings
+    $props: ComponentInternalInstance['props'],
+    $setup: ComponentInternalInstance['setupState'],
+    $data: ComponentInternalInstance['data'],
+    $options: ComponentInternalInstance['ctx']
   ) => void
 
   /**
@@ -316,6 +321,9 @@ interface LegacyOptions<
   renderTracked?: DebuggerHook
   renderTriggered?: DebuggerHook
   errorCaptured?: ErrorCapturedHook
+
+  // runtime compile only
+  delimiters?: [string, string]
 }
 
 export type OptionTypesKeys = 'P' | 'B' | 'D' | 'C' | 'M'

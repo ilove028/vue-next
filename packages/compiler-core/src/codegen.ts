@@ -64,7 +64,8 @@ export interface CodegenResult {
   map?: RawSourceMap
 }
 
-export interface CodegenContext extends Required<CodegenOptions> {
+export interface CodegenContext
+  extends Omit<Required<CodegenOptions>, 'bindingMetadata'> {
   source: string
   code: string
   line: number
@@ -88,7 +89,7 @@ function createCodegenContext(
     sourceMap = false,
     filename = `template.vue.html`,
     scopeId = null,
-    optimizeBindings = false,
+    optimizeImports = false,
     runtimeGlobalName = `Vue`,
     runtimeModuleName = `vue`,
     ssr = false
@@ -100,7 +101,7 @@ function createCodegenContext(
     sourceMap,
     filename,
     scopeId,
-    optimizeBindings,
+    optimizeImports,
     runtimeGlobalName,
     runtimeModuleName,
     ssr,
@@ -179,9 +180,12 @@ function createCodegenContext(
 
 export function generate(
   ast: RootNode,
-  options: CodegenOptions = {}
+  options: CodegenOptions & {
+    onContextCreated?: (context: CodegenContext) => void
+  } = {}
 ): CodegenResult {
   const context = createCodegenContext(ast, options)
+  if (options.onContextCreated) options.onContextCreated(context)
   const {
     mode,
     push,
@@ -197,27 +201,39 @@ export function generate(
   const genScopeId = !__BROWSER__ && scopeId != null && mode === 'module'
 
   // preambles
+  // 生成执行函数的前序部分，主要是方法（如createVnode、createBlock等）的引入，
+  // 和静态提升节点的声明
   if (!__BROWSER__ && mode === 'module') {
     genModulePreamble(ast, context, genScopeId)
   } else {
+    // 浏览器环境生成函数的前序代码
     genFunctionPreamble(ast, context)
   }
 
+  // binding optimizations
+  const optimizeSources = options.bindingMetadata
+    ? `, $props, $setup, $data, $options`
+    : ``
   // enter render function
   if (!ssr) {
     if (genScopeId) {
       push(`const render = ${PURE_ANNOTATION}_withId(`)
     }
-    push(`function render(_ctx, _cache) {`)
+    push(`function render(_ctx, _cache${optimizeSources}) {`)
   } else {
     if (genScopeId) {
       push(`const ssrRender = ${PURE_ANNOTATION}_withId(`)
     }
-    push(`function ssrRender(_ctx, _push, _parent, _attrs) {`)
+    push(`function ssrRender(_ctx, _push, _parent, _attrs${optimizeSources}) {`)
   }
   indent()
 
   if (useWithBlock) {
+    // 如果判断需要使用with函数，会将_ctx声明为with函数体内的上下文，这样
+    // 在调用属性时会方便很多，比如不用with调用_ctx.test，启用with后直接
+    // 调用test就可以了，不过with函数因为传入未知作用域context，导致js
+    // 预编译阶段不会提前确定好各个相应声明的所属位置，因此运行时会慢一些，
+    // 因为要花一些时间查找声明所属位置
     push(`with (_ctx) {`)
     indent()
     // function mode const declarations should be inside with block
@@ -287,6 +303,11 @@ export function generate(
   }
 }
 
+/**
+ * 生成函数的前序部分，主要包括createVnode、createBlock等节点创建方法的引入，和静态节点提升的声明
+ * @param ast
+ * @param context
+ */
 function genFunctionPreamble(ast: RootNode, context: CodegenContext) {
   const {
     ssr,
@@ -333,7 +354,7 @@ function genFunctionPreamble(ast: RootNode, context: CodegenContext) {
   }
   // generate variables for ssr helpers
   if (!__BROWSER__ && ast.ssrHelpers && ast.ssrHelpers.length) {
-    // ssr guaruntees prefixIdentifier: true
+    // ssr guarantees prefixIdentifier: true
     push(
       `const { ${ast.ssrHelpers
         .map(aliasHelper)
@@ -355,7 +376,7 @@ function genModulePreamble(
     helper,
     newline,
     scopeId,
-    optimizeBindings,
+    optimizeImports,
     runtimeModuleName
   } = context
 
@@ -368,11 +389,11 @@ function genModulePreamble(
 
   // generate import statements for helpers
   if (ast.helpers.length) {
-    if (optimizeBindings) {
+    if (optimizeImports) {
       // when bundled with webpack with code-split, calling an import binding
       // as a function leads to it being wrapped with `Object(a.b)` or `(0,a.b)`,
       // incurring both payload size increase and potential perf overhead.
-      // therefore we assign the imports to vairables (which is a constant ~50b
+      // therefore we assign the imports to variables (which is a constant ~50b
       // cost per-component instead of scaling with template size)
       push(
         `import { ${ast.helpers
@@ -437,6 +458,11 @@ function genAssets(
   }
 }
 
+/**
+ * 生成静态节点提升声明，形如const _hoisted_${i + 1} = ...这样的节点创建声明
+ * @param hoists
+ * @param context
+ */
 function genHoists(hoists: (JSChildNode | null)[], context: CodegenContext) {
   if (!hoists.length) {
     return
@@ -446,7 +472,7 @@ function genHoists(hoists: (JSChildNode | null)[], context: CodegenContext) {
   const genScopeId = !__BROWSER__ && scopeId != null && mode !== 'function'
   newline()
 
-  // push scope Id before initilaizing hoisted vnodes so that these vnodes
+  // push scope Id before initializing hoisted vnodes so that these vnodes
   // get the proper scopeId as well.
   if (genScopeId) {
     push(`${helper(PUSH_SCOPE_ID)}("${scopeId}")`)
@@ -691,6 +717,11 @@ function genComment(node: CommentNode, context: CodegenContext) {
   }
 }
 
+/**
+ * 生成类似withDirectives((openBlock(true), createBlock(...args)), directivesObj)这样的代码，即render函数中的Vnode核心创建逻辑代码，和我们手写render类似。
+ * @param node
+ * @param context
+ */
 function genVNodeCall(node: VNodeCall, context: CodegenContext) {
   const { push, helper, pure } = context
   const {

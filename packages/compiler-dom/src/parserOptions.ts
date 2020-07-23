@@ -23,6 +23,7 @@ export const enum DOMNamespaces {
 }
 
 export const parserOptions: ParserOptions = {
+  // is self close tag.
   isVoidTag,
   isNativeTag: tag => isHTMLTag(tag) || isSVGTag(tag),
   isPreTag: tag => tag === 'pre',

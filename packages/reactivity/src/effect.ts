@@ -11,7 +11,7 @@ type KeyToDepMap = Map<any, Dep>
 const targetMap = new WeakMap<any, KeyToDepMap>()
 
 export interface ReactiveEffect<T = any> {
-  (...args: any[]): T
+  (): T
   _isEffect: true
   // 唯一ID
   id: number
@@ -25,10 +25,6 @@ export interface ReactiveEffect<T = any> {
 
 export interface ReactiveEffectOptions {
   lazy?: boolean
-  computed?: boolean
-  /**
-   * What scheduler used for
-   */
   scheduler?: (job: ReactiveEffect) => void
   onTrack?: (event: DebuggerEvent) => void
   onTrigger?: (event: DebuggerEvent) => void
@@ -98,12 +94,12 @@ let uid = 0
  * @param options
  */
 function createReactiveEffect<T = any>(
-  fn: (...args: any[]) => T,
+  fn: () => T,
   options: ReactiveEffectOptions
 ): ReactiveEffect<T> {
-  const effect = function reactiveEffect(...args: unknown[]): unknown {
+  const effect = function reactiveEffect(): unknown {
     if (!effect.active) {
-      return options.scheduler ? undefined : fn(...args)
+      return options.scheduler ? undefined : fn()
     }
     if (!effectStack.includes(effect)) {
       cleanup(effect)
@@ -111,7 +107,7 @@ function createReactiveEffect<T = any>(
         enableTracking()
         effectStack.push(effect)
         activeEffect = effect
-        return fn(...args)
+        return fn()
       } finally {
         effectStack.pop()
         resetTracking()
@@ -230,6 +226,8 @@ export function trigger(
   const add = (effectsToAdd: Set<ReactiveEffect> | undefined) => {
     if (effectsToAdd) {
       effectsToAdd.forEach(effect => {
+        // foo.value++ has two operations get and set. get will track effect set will trigger effect and now effect === activeEffect
+        // which will case infinite loop; !shouldTrack maybe means activeEffect will not track so we should add effect
         if (effect !== activeEffect || !shouldTrack) {
           effects.add(effect)
         } else {

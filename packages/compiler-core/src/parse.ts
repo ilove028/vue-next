@@ -85,6 +85,11 @@ export function baseParse(
   )
 }
 
+/**
+ * create parse context which contains parse process and config.
+ * @param content template content
+ * @param options
+ */
 function createParserContext(
   content: string,
   options: ParserOptions
@@ -106,6 +111,7 @@ function parseChildren(
   mode: TextModes,
   ancestors: ElementNode[]
 ): TemplateChildNode[] {
+  // get parent and parent namespace
   const parent = last(ancestors)
   const ns = parent ? parent.ns : Namespaces.HTML
   const nodes: TemplateChildNode[] = []
@@ -113,11 +119,12 @@ function parseChildren(
   while (!isEnd(context, mode, ancestors)) {
     __TEST__ && assert(context.source.length > 0)
     const s = context.source
+    // parsed ast node.
     let node: TemplateChildNode | TemplateChildNode[] | undefined = undefined
 
     if (mode === TextModes.DATA || mode === TextModes.RCDATA) {
       if (!context.inVPre && startsWith(s, context.options.delimiters[0])) {
-        // '{{'
+        // '{{' not in vpre and start with left delimiter {{ start interpolation parse.
         node = parseInterpolation(context, mode)
       } else if (mode === TextModes.DATA && s[0] === '<') {
         // https://html.spec.whatwg.org/multipage/parsing.html#tag-open-state
@@ -131,6 +138,7 @@ function parseChildren(
             // Ignore DOCTYPE by a limitation.
             node = parseBogusComment(context)
           } else if (startsWith(s, '<![CDATA[')) {
+            // if start with <!CDATA[ and namespace is not html
             if (ns !== Namespaces.HTML) {
               node = parseCDATA(context, ancestors)
             } else {
@@ -150,6 +158,7 @@ function parseChildren(
             advanceBy(context, 3)
             continue
           } else if (/[a-z]/i.test(s[2])) {
+            // 类似 </div>
             emitError(context, ErrorCodes.X_INVALID_END_TAG)
             parseTag(context, TagType.End, parent)
             continue
@@ -180,6 +189,7 @@ function parseChildren(
     }
 
     if (isArray(node)) {
+      //  parseCDATA 里面调用 parseChildren ，而 parseCDATA 的解析都是同级的，所以你懂的。pushNode 的目的，就是为了合并相邻 NodeTypes.TEXT 节点
       for (let i = 0; i < node.length; i++) {
         pushNode(nodes, node[i])
       }
@@ -271,6 +281,7 @@ function parseCDATA(
   __TEST__ && assert(startsWith(context.source, '<![CDATA['))
 
   advanceBy(context, 9)
+  //  parseChildren 里面只是调用 parseText 去解析节点。同时返回来的内容可能包含多个节点，这也是 parseChildren 的循环里面需要判断返回的节点是否是数组的原因了。
   const nodes = parseChildren(context, TextModes.CDATA, ancestors)
   if (context.source.length === 0) {
     emitError(context, ErrorCodes.EOF_IN_CDATA)
@@ -296,9 +307,11 @@ function parseComment(context: ParserContext): CommentNode {
     emitError(context, ErrorCodes.EOF_IN_COMMENT)
   } else {
     if (match.index <= 3) {
+      // 如果 match.index <= 3, 说明匹配到的 -- 是注释开头的 --
       emitError(context, ErrorCodes.ABRUPT_CLOSING_OF_EMPTY_COMMENT)
     }
     if (match[1]) {
+      // 注释结尾不允许有感叹号
       emitError(context, ErrorCodes.INCORRECTLY_CLOSED_COMMENT)
     }
     content = context.source.slice(4, match.index)
@@ -353,6 +366,7 @@ function parseElement(
 ): ElementNode | undefined {
   __TEST__ && assert(/^<[a-z]/i.test(context.source))
 
+  // wasInPre 、wasInVPre 都是为了保存当前的 pre 状态，因为下面解析 parseTag 的时候 context 上的值会改变，而如果解析后 inPre 或者 inVPre 变为 true，而以前是 false，就说明当前标签是 pre 或者 v-pre 的边界点，也就是由它开启的，在 parseElement 的最后也要恢复成原来的状态
   // Start tag.
   const wasInPre = context.inPre
   const wasInVPre = context.inVPre
@@ -365,7 +379,7 @@ function parseElement(
     return element
   }
 
-  // Children.
+  // Start parse Children.
   ancestors.push(element)
   const mode = context.options.getTextMode(element, parent)
   const children = parseChildren(context, mode, ancestors)
@@ -424,6 +438,7 @@ function parseTag(
   const start = getCursor(context)
   const match = /^<\/?([a-z][^\t\r\n\f />]*)/i.exec(context.source)!
   const tag = match[1]
+  // 不同的命名空间会对解析是有影响的，对于 dom 平台来说，目前就三种命名空间，DOMNamespaces.HTML html 命名空间，DOMNamespaces.MATH_ML math ml 命名空间，DOMNamespaces.SVG svg 命名空间。
   const ns = context.options.getNamespace(tag, parent)
 
   advanceBy(context, match[0].length)
@@ -468,16 +483,21 @@ function parseTag(
 
   let tagType = ElementTypes.ELEMENT
   const options = context.options
+  // isCustomElement 自定义标签，这个常见的用法就是我们的自定义的 WebComponent。
   if (!context.inVPre && !options.isCustomElement(tag)) {
     const hasVIs = props.some(
       p => p.type === NodeTypes.DIRECTIVE && p.name === 'is'
     )
     if (options.isNativeTag && !hasVIs) {
+      // 对于 dom 平台， 原生 tag 就是 isNativeTag: tag => isHTMLTag(tag) || isSVGTag(tag)。
       if (!options.isNativeTag(tag)) tagType = ElementTypes.COMPONENT
     } else if (
       hasVIs ||
+      // 框架核心组件就是包括了 Teleport、Suspense、KeepAlive、BaseTransition
       isCoreComponent(tag) ||
+      // 平台内建组件就是 Transition、 TransitionGroup。
       (options.isBuiltInComponent && options.isBuiltInComponent(tag)) ||
+      // 大写开头的标签
       /^[A-Z]/.test(tag) ||
       tag === 'component'
     ) {
@@ -494,6 +514,7 @@ function parseTag(
         )
       })
     ) {
+      // 对于 tag 为 template的，只有它有 if,else,else-if,for,slot 这些指令，我们在认为他是 ElementTypes.TEMPLATE。
       tagType = ElementTypes.TEMPLATE
     }
   }
@@ -545,6 +566,11 @@ function parseAttributes(
   return props
 }
 
+/**
+ * 解析属性 <div has v-for="(v,i) of datas" ></div>
+ * @param context
+ * @param nameSet
+ */
 function parseAttribute(
   context: ParserContext,
   nameSet: Set<string>
@@ -599,6 +625,7 @@ function parseAttribute(
   const loc = getSelection(context, start)
 
   if (!context.inVPre && /^(v-|:|@|#)/.test(name)) {
+    // (?::|^@|^#)，属于指令的语法糖，分别代表 bind、 click 和slot   v-on:[event], event 就是动态参数
     const match = /(?:^v-([a-z0-9-]+))?(?:(?::|^@|^#)(\[[^\]]+\]|[^\.]+))?(.+)?$/i.exec(
       name
     )!
@@ -689,6 +716,10 @@ function parseAttribute(
   }
 }
 
+/**
+ * 只做纯文本解析对于指令由parseAttribute 分析
+ * @param context
+ */
 function parseAttributeValue(
   context: ParserContext
 ):
@@ -752,6 +783,8 @@ function parseInterpolation(
     return undefined
   }
 
+  // start 是插值符的开始位置， innerStart 是 插值内容开始的位置，这个会被进行二次修复，因为内容前面可能会有空格，同样 innerEnd 是指插值内容结束的位置，也会被二次修复
+  // 首先 rawContentLength 是原始插值的长度，里面可能包含前后空格以及内容可能需要解码，如果需要解码，解码后的内容是比没有解码前的内容长度要短的
   const start = getCursor(context)
   advanceBy(context, open.length)
   const innerStart = getCursor(context)
@@ -764,6 +797,8 @@ function parseInterpolation(
   if (startOffset > 0) {
     advancePositionWithMutation(innerStart, rawContent, startOffset)
   }
+
+  // (preTrimContent.length - content.length - startOffset) 拿到的是内容后面空格的长度，所以 endOffset 就是原始插值减去后面空格的长度
   const endOffset =
     rawContentLength - (preTrimContent.length - content.length - startOffset)
   advancePositionWithMutation(innerEnd, rawContent, endOffset)
@@ -783,10 +818,17 @@ function parseInterpolation(
   }
 }
 
+/**
+ * Parse text
+ * @param context
+ * @param mode
+ */
 function parseText(context: ParserContext, mode: TextModes): TextNode {
   __TEST__ && assert(context.source.length > 0)
 
+  // 首先利用 endTokens 去判断结尾，分别是标签的开头、左delimiters
   const endTokens = ['<', context.options.delimiters[0]]
+  // 如果是 TextModes.CDATA 模式下，还包括 ]]>
   if (mode === TextModes.CDATA) {
     endTokens.push(']]>')
   }
@@ -794,6 +836,7 @@ function parseText(context: ParserContext, mode: TextModes): TextNode {
   let endIndex = context.source.length
   for (let i = 0; i < endTokens.length; i++) {
     const index = context.source.indexOf(endTokens[i], 1)
+    // 寻找最小endIndex 即尽可以能短的text
     if (index !== -1 && endIndex > index) {
       endIndex = index
     }
@@ -837,6 +880,10 @@ function parseTextData(
   }
 }
 
+/**
+ * Get parse position
+ * @param context
+ */
 function getCursor(context: ParserContext): Position {
   const { column, line, offset } = context
   return { column, line, offset }
@@ -863,6 +910,11 @@ function startsWith(source: string, searchString: string): boolean {
   return source.startsWith(searchString)
 }
 
+/**
+ * change context position and set context source
+ * @param context
+ * @param numberOfCharacters
+ */
 function advanceBy(context: ParserContext, numberOfCharacters: number): void {
   const { source } = context
   __TEST__ && assert(numberOfCharacters <= source.length)
@@ -870,6 +922,10 @@ function advanceBy(context: ParserContext, numberOfCharacters: number): void {
   context.source = source.slice(numberOfCharacters)
 }
 
+/**
+ * advance by space length
+ * @param context
+ */
 function advanceSpaces(context: ParserContext): void {
   const match = /^[\t\r\n\f ]+/.exec(context.source)
   if (match) {
@@ -908,6 +964,12 @@ function emitError(
   )
 }
 
+/**
+ * Is parse end different mode has different logic.
+ * @param context
+ * @param mode
+ * @param ancestors
+ */
 function isEnd(
   context: ParserContext,
   mode: TextModes,
@@ -917,6 +979,7 @@ function isEnd(
 
   switch (mode) {
     case TextModes.DATA:
+      // TextModes.DATA 允许有标签没闭合，所以只要祖先有相同的标签就可以了
       if (startsWith(s, '</')) {
         //TODO: probably bad performance
         for (let i = ancestors.length - 1; i >= 0; --i) {
@@ -929,6 +992,7 @@ function isEnd(
 
     case TextModes.RCDATA:
     case TextModes.RAWTEXT: {
+      // RCDATA、RAWTEXT 要求父级标签跟闭合标签一样才算结束
       const parent = last(ancestors)
       if (parent && startsWithEndTagOpen(s, parent.tag)) {
         return true
@@ -938,11 +1002,12 @@ function isEnd(
 
     case TextModes.CDATA:
       if (startsWith(s, ']]>')) {
+        // TextModes.CDATA ，则要求 ]]> 结尾
         return true
       }
       break
   }
-
+  // 如果都不符合这些条件，则看看 s 是否为空来决定是否到尽头了。
   return !s
 }
 

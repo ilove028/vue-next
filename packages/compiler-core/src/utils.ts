@@ -20,7 +20,8 @@ import {
   IfBranchNode,
   TextNode,
   InterpolationNode,
-  VNodeCall
+  VNodeCall,
+  SimpleExpressionNode
 } from './ast'
 import { TransformContext } from './transform'
 import {
@@ -31,9 +32,9 @@ import {
   BASE_TRANSITION
 } from './runtimeHelpers'
 import { isString, isObject, hyphenate, extend } from '@vue/shared'
-import { parse } from '@babel/parser'
-import { walk } from 'estree-walker'
-import { Node } from '@babel/types'
+
+export const isStaticExp = (p: JSChildNode): p is SimpleExpressionNode =>
+  p.type === NodeTypes.SIMPLE_EXPRESSION && p.isStatic
 
 export const isBuiltInType = (tag: string, expected: string): boolean =>
   tag === expected || tag === hyphenate(expected)
@@ -47,35 +48,6 @@ export function isCoreComponent(tag: string): symbol | void {
     return KEEP_ALIVE
   } else if (isBuiltInType(tag, 'BaseTransition')) {
     return BASE_TRANSITION
-  }
-}
-
-export const parseJS: typeof parse = (code, options) => {
-  if (__BROWSER__) {
-    assert(
-      !__BROWSER__,
-      `Expression AST analysis can only be performed in non-browser builds.`
-    )
-    return null as any
-  } else {
-    return parse(code, options)
-  }
-}
-
-interface Walker {
-  enter?(node: Node, parent: Node): void
-  leave?(node: Node): void
-}
-
-export const walkJS = (ast: Node, walker: Walker) => {
-  if (__BROWSER__) {
-    assert(
-      !__BROWSER__,
-      `Expression AST analysis can only be performed in non-browser builds.`
-    )
-    return null as any
-  } else {
-    return (walk as any)(ast, walker)
   }
 }
 
@@ -135,6 +107,8 @@ export function advancePositionWithMutation(
 ): Position {
   let linesCount = 0
   let lastNewLinePos = -1
+  //     lastNewLinePos = 2
+  // "A\nB"
   for (let i = 0; i < numberOfCharacters; i++) {
     if (source.charCodeAt(i) === 10 /* newline char code */) {
       linesCount++
@@ -159,6 +133,12 @@ export function assert(condition: boolean, msg?: string) {
   }
 }
 
+/**
+ * 寻找节点有没有该属性
+ * @param node
+ * @param name
+ * @param allowEmpty
+ */
 export function findDir(
   node: ElementNode,
   name: string | RegExp,
@@ -196,12 +176,7 @@ export function findProp(
 }
 
 export function isBindKey(arg: DirectiveNode['arg'], name: string): boolean {
-  return !!(
-    arg &&
-    arg.type === NodeTypes.SIMPLE_EXPRESSION &&
-    arg.isStatic &&
-    arg.content === name
-  )
+  return !!(arg && isStaticExp(arg) && arg.content === name)
 }
 
 export function hasDynamicKeyVBind(node: ElementNode): boolean {

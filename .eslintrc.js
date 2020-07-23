@@ -8,7 +8,7 @@ module.exports = {
   },
   rules: {
     'no-unused-vars': [
-      'error',
+      'off',
       // we are only using this rule to check for unused arguments since TS
       // catches unused variables but not args.
       { varsIgnorePattern: '.*', args: 'after-used', argsIgnorePattern: '^_' }
@@ -30,6 +30,13 @@ module.exports = {
       rules: {
         'no-restricted-globals': 'off',
         'no-restricted-syntax': 'off'
+      }
+    },
+    // shared, may be used in any env
+    {
+      files: ['packages/shared/**'],
+      rules: {
+        'no-restricted-globals': 'off'
       }
     },
     // Packages targeting DOM

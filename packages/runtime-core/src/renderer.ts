@@ -10,8 +10,7 @@ import {
   isSameVNodeType,
   Static,
   VNodeNormalizedRef,
-  VNodeHook,
-  isVNode
+  VNodeHook
 } from './vnode'
 import {
   ComponentInternalInstance,
@@ -53,7 +52,7 @@ import {
   queueEffectWithSuspense,
   SuspenseImpl
 } from './components/Suspense'
-import { TeleportImpl } from './components/Teleport'
+import { TeleportImpl, TeleportVNode } from './components/Teleport'
 import { isKeepAlive, KeepAliveContext } from './components/KeepAlive'
 import { registerHMR, unregisterHMR, isHmrUpdating } from './hmr'
 import {
@@ -65,8 +64,10 @@ import { createHydrationFunctions, RootHydrateFunction } from './hydration'
 import { invokeDirectiveHook } from './directives'
 import { startMeasure, endMeasure } from './profiling'
 import { ComponentPublicInstance } from './componentProxy'
+import { devtoolsComponentRemoved, devtoolsComponentUpdated } from './devtools'
+import { initFeatureFlags } from './featureFlags'
 
-export interface Renderer<HostElement = any> {
+export interface Renderer<HostElement = RendererElement> {
   render: RootRenderFunction<HostElement>
   createApp: CreateAppFunction<HostElement>
 }
@@ -383,6 +384,11 @@ function baseCreateRenderer(
   options: RendererOptions,
   createHydrationFns?: typeof createHydrationFunctions
 ): any {
+  // compile-time feature flags check
+  if (__ESM_BUNDLER__ && !__TEST__) {
+    initFeatureFlags()
+  }
+
   const {
     insert: hostInsert,
     remove: hostRemove,
@@ -476,8 +482,8 @@ function baseCreateRenderer(
           )
         } else if (shapeFlag & ShapeFlags.TELEPORT) {
           ;(type as typeof TeleportImpl).process(
-            n1,
-            n2,
+            n1 as TeleportVNode,
+            n2 as TeleportVNode,
             container,
             anchor,
             parentComponent,
@@ -663,6 +669,7 @@ function baseCreateRenderer(
       dirs
     } = vnode
     if (
+      !__DEV__ &&
       vnode.el &&
       hostCloneNode !== undefined &&
       patchFlag === PatchFlags.HOISTED
@@ -670,6 +677,7 @@ function baseCreateRenderer(
       // If a vnode has non-null el, it means it's being reused.
       // Only static vnodes can be reused, so its mounted DOM nodes should be
       // exactly the same, and we can simply do a clone here.
+      // only do this in production since cloned trees cannot be HMR updated.
       el = vnode.el = hostCloneNode(vnode.el)
     } else {
       el = vnode.el = hostCreateElement(
@@ -736,14 +744,17 @@ function baseCreateRenderer(
     }
 
     hostInsert(el, container, anchor)
+    // #1583 For inside suspense case, enter hook should call when suspense resolved
+    const needCallTransitionHooks =
+      !parentSuspense && transition && !transition.persisted
     if (
       (vnodeHook = props && props.onVnodeMounted) ||
-      (transition && !transition.persisted) ||
+      needCallTransitionHooks ||
       dirs
     ) {
       queuePostRenderEffect(() => {
         vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode)
-        transition && !transition.persisted && transition.enter(el)
+        needCallTransitionHooks && transition!.enter(el)
         dirs && invokeDirectiveHook(vnode, null, parentComponent, 'mounted')
       }, parentSuspense)
     }
@@ -1388,6 +1399,11 @@ function baseCreateRenderer(
             invokeVNodeHook(vnodeHook!, parent, next!, vnode)
           }, parentSuspense)
         }
+
+        if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+          devtoolsComponentUpdated(instance)
+        }
+
         if (__DEV__) {
           popWarningContext()
         }
@@ -1996,18 +2012,16 @@ function baseCreateRenderer(
     if (bum) {
       invokeArrayFns(bum)
     }
+    if (effects) {
+      for (let i = 0; i < effects.length; i++) {
+        stop(effects[i])
+      }
+    }
     // update may be null if a component is unmounted before its async
     // setup has resolved.
     if (update) {
       stop(update)
       unmount(subTree, instance, parentSuspense, doRemove)
-    }
-    if (effects) {
-      queuePostRenderEffect(() => {
-        for (let i = 0; i < effects.length; i++) {
-          stop(effects[i])
-        }
-      }, parentSuspense)
     }
     // unmounted hook
     if (um) {
@@ -2040,6 +2054,10 @@ function baseCreateRenderer(
       if (parentSuspense.deps === 0) {
         parentSuspense.resolve()
       }
+    }
+
+    if (__DEV__ || __FEATURE_PROD_DEVTOOLS__) {
+      devtoolsComponentRemoved(instance)
     }
   }
 
@@ -2078,14 +2096,11 @@ function baseCreateRenderer(
     const ch2 = n2.children
     if (isArray(ch1) && isArray(ch2)) {
       for (let i = 0; i < ch1.length; i++) {
-        const c1 = ch1[i]
-        const c2 = ch2[i]
-        if (
-          isVNode(c1) &&
-          isVNode(c2) &&
-          c2.shapeFlag & ShapeFlags.ELEMENT &&
-          !c2.dynamicChildren
-        ) {
+        // this is only called in the optimized path so array children are
+        // guaranteed to be vnodes
+        const c1 = ch1[i] as VNode
+        const c2 = (ch2[i] = cloneIfMounted(ch2[i] as VNode))
+        if (c2.shapeFlag & ShapeFlags.ELEMENT && !c2.dynamicChildren) {
           if (c2.patchFlag <= 0) {
             c2.el = c1.el
           }
