@@ -409,8 +409,8 @@ function baseCreateRenderer(
   // Note: functions inside this closure should use `const xxx = () => {}`
   // style in order to prevent being inlined by minifiers.
   const patch: PatchFn = (
-    n1,
-    n2,
+    n1, // Old vnode
+    n2, // new vnode
     container,
     anchor = null,
     parentComponent = null,
@@ -515,12 +515,20 @@ function baseCreateRenderer(
     }
   }
 
+  /**
+   * use host create or replace function insert text or set text.
+   * @param n1 old vnode
+   * @param n2 new vnode
+   * @param container
+   * @param anchor next sibling
+   */
   const processText: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
     if (n1 == null) {
+      // e.g dom use insertBefore
       hostInsert(
-        (n2.el = hostCreateText(n2.children as string)),
+        (n2.el = hostCreateText(n2.children as string)), // use host createText function e.g dom user document.createTextNode
         container,
-        anchor
+        anchor // next sibling
       )
     } else {
       const el = (n2.el = n1.el!)
@@ -530,6 +538,13 @@ function baseCreateRenderer(
     }
   }
 
+  /**
+   * Just like processText expect not support dynamic comments.
+   * @param n1
+   * @param n2
+   * @param container
+   * @param anchor
+   */
   const processCommentNode: ProcessTextOrCommentFn = (
     n1,
     n2,
@@ -548,6 +563,13 @@ function baseCreateRenderer(
     }
   }
 
+  /**
+   * Insert svg or innerHTML.
+   * @param n2
+   * @param container
+   * @param anchor
+   * @param isSVG
+   */
   const mountStaticNode = (
     n2: VNode,
     container: RendererElement,
@@ -760,6 +782,17 @@ function baseCreateRenderer(
     }
   }
 
+  /**
+   * call patch function on every child vnode.
+   * @param children
+   * @param container
+   * @param anchor
+   * @param parentComponent
+   * @param parentSuspense
+   * @param isSVG
+   * @param optimized
+   * @param start
+   */
   const mountChildren: MountChildrenFn = (
     children,
     container,
@@ -937,6 +970,15 @@ function baseCreateRenderer(
   }
 
   // The fast path for blocks.
+  /**
+   * get parentNode and call path function with optimized true
+   * @param oldChildren
+   * @param newChildren
+   * @param fallbackContainer
+   * @param parentComponent
+   * @param parentSuspense
+   * @param isSVG
+   */
   const patchBlockChildren: PatchBlockChildrenFn = (
     oldChildren,
     newChildren,
@@ -958,7 +1000,8 @@ function baseCreateRenderer(
         !isSameVNodeType(oldVNode, newVNode) ||
         // - In the case of a component, it could contain anything.
         oldVNode.shapeFlag & ShapeFlags.COMPONENT
-          ? hostParentNode(oldVNode.el!)!
+          ? // e.g dom just call node.parentNode.
+            hostParentNode(oldVNode.el!)!
           : // In other cases, the parent container is not actually used so we
             // just pass the block element here to avoid a DOM parentNode call.
             fallbackContainer
@@ -1427,6 +1470,20 @@ function baseCreateRenderer(
     updateSlots(instance, nextVNode.children)
   }
 
+  /**
+   * case n2.patchFlag > 0 call patchKeyedChildren (PatchFlags.KEYED_FRAGMENT) or patchUnkeyedChildren (PatchFlags.UNKEYED_FRAGMENT)
+   * case n2.shapeFlag & ShapeFlags.TEXT_CHILDREN n1.ShapeFlags.ARRAY_CHILDREN unmountChildren n1 and set n2 text.
+   * case n1 and n2 shapeFlag ARRAY_CHILDREN call patchKeyedChildren
+   * case n1 text n2 array mountChildren c2.
+   * @param n1
+   * @param n2
+   * @param container
+   * @param anchor
+   * @param parentComponent
+   * @param parentSuspense
+   * @param isSVG
+   * @param optimized
+   */
   const patchChildren: PatchChildrenFn = (
     n1,
     n2,
@@ -1481,6 +1538,7 @@ function baseCreateRenderer(
         unmountChildren(c1 as VNode[], parentComponent, parentSuspense)
       }
       if (c2 !== c1) {
+        // e.g dom call node.textContent
         hostSetElementText(container, c2 as string)
       }
     } else {
@@ -2061,6 +2119,14 @@ function baseCreateRenderer(
     }
   }
 
+  /**
+   * call unmount on every child vnode.
+   * @param children
+   * @param parentComponent
+   * @param parentSuspense
+   * @param doRemove
+   * @param start
+   */
   const unmountChildren: UnmountChildrenFn = (
     children,
     parentComponent,

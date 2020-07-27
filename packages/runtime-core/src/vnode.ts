@@ -239,6 +239,11 @@ export function isVNode(value: any): value is VNode {
   return value ? value.__v_isVNode === true : false
 }
 
+/**
+ * if n1(old vnode) n2(new vnode) has the same type and key.
+ * @param n1
+ * @param n2
+ */
 export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
   if (
     __DEV__ &&
