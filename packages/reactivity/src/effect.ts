@@ -225,17 +225,13 @@ export function trigger(
   const effects = new Set<ReactiveEffect>()
   const add = (effectsToAdd: Set<ReactiveEffect> | undefined) => {
     if (effectsToAdd) {
-      effectsToAdd.forEach(effect => {
-        // foo.value++ has two operations get and set. get will track effect set will trigger effect and now effect === activeEffect
-        // which will case infinite loop; !shouldTrack maybe means activeEffect will not track so we should add effect
-        if (effect !== activeEffect || !shouldTrack) {
-          effects.add(effect)
-        } else {
-          // the effect mutated its own dependency during its execution.
-          // this can be caused by operations like foo.value++
-          // do not trigger or we end in an infinite loop
-        }
-      })
+      // foo.value++ has two operations get and set. get will track effect set will trigger effect and now effect === activeEffect
+      // which will case infinite loop; !shouldTrack maybe means activeEffect will not track so we should add effect
+      // the effect mutated its own dependency during its execution.
+      // this can be caused by operations like foo.value++
+      // do not trigger or we end in an infinite loop
+      // pre version 532f58fc391f9361d0521bc96791ff7dee11e90d
+      effectsToAdd.forEach(effect => effects.add(effect))
     }
   }
 

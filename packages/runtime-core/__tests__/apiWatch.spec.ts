@@ -12,15 +12,13 @@ import {
   ITERATE_KEY,
   DebuggerEvent,
   TrackOpTypes,
-  TriggerOpTypes
+  TriggerOpTypes,
+  triggerRef
 } from '@vue/reactivity'
-import { mockWarn } from '@vue/shared'
 
 // reference: https://vue-composition-api-rfc.netlify.com/api.html#watch
 
 describe('api: watch', () => {
-  mockWarn()
-
   it('effect', async () => {
     const state = reactive({ count: 0 })
     let dummy
@@ -639,5 +637,28 @@ describe('api: watch', () => {
     expect(calls).toBe(0)
     v.value++
     expect(calls).toBe(1)
+  })
+
+  test('should force trigger on triggerRef when watching a ref', async () => {
+    const v = ref({ a: 1 })
+    let sideEffect = 0
+    watch(v, obj => {
+      sideEffect = obj.a
+    })
+
+    v.value = v.value
+    await nextTick()
+    // should not trigger
+    expect(sideEffect).toBe(0)
+
+    v.value.a++
+    await nextTick()
+    // should not trigger
+    expect(sideEffect).toBe(0)
+
+    triggerRef(v)
+    await nextTick()
+    // should trigger now
+    expect(sideEffect).toBe(2)
   })
 })
