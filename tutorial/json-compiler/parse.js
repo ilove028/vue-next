@@ -5,20 +5,24 @@ module.exports = function parse(ast) {
     switch (ast.type) {
       case 0: {
         // 根节点
-        return `return async function ${
-          ast.name ? ast.name : ''
-        }(${ast.inputs.map(i => i.name).join(',')}) { ${parse(ast.children)} }`
+        return `return async function ${ast.name ? ast.name : ''}(${
+          Array.isArray(ast.inputs)
+            ? `${ast.inputs.map(i => i.name).join(',')}`
+            : ''
+        }) { with(this) { ${parse(ast.children)} }}`
       }
       case 1: {
         // 开始节点
         // return ` (${ast.inputs.map(i => i.name).join(',')}){ with(this){${parse(ast.children)}`
-        return `with(this){${parse(ast.children)} /* with */}`
+        // return `with(this){${parse(ast.children)} /* with */}`
       }
       case 2: {
         // 结束节点
-        return `return {${ast.output
-          .map(o => `${o.key}:${o.value}`)
-          .join(',')}};`
+        return `return ${
+          Array.isArray(ast.output)
+            ? `{${ast.output.map(o => `${o.key}:${o.value}`).join(',')}}`
+            : `${ast.output}`
+        };`
       }
       case 3: {
         // IF节点
@@ -49,6 +53,25 @@ module.exports = function parse(ast) {
         }await require('./lib/${ast.name}').call(this, ${ast.inputs
           .map(i => (i.name ? i.name : JSON.stringify(i.value)))
           .join(',')});${parse(ast.children)}`
+      }
+      case 8: {
+        // break 节点
+        return 'break;'
+      }
+      case 9: {
+        // 赋值节点
+        return `${ast.modifier} ${ast.name} = ${JSON.stringify(
+          ast.value
+        )}; ${parse(ast.children)}`
+      }
+      case 10: {
+        // while
+        return `while (${ast.express}) { ${parse(ast.body)} } ${parse(
+          ast.children
+        )}`
+      }
+      case 11: {
+        return 'continue;'
       }
     }
   } else {

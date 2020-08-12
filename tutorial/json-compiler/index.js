@@ -67,18 +67,20 @@ function compile(ast) {
           // 根节点
           return `return async function(${ast.inputs
             .map(i => i.name)
-            .join(',')}) { ${walk(ast.children)} }`
+            .join(',')}) { with(this) { ${walk(ast.children)} } }`
         }
-        case 1: {
-          // 开始节点
-          // return ` (${ast.inputs.map(i => i.name).join(',')}){ with(this){${walk(ast.children)}`
-          return `with(this){${walk(ast.children)} /* with */}`
-        }
+        // case 1: {
+        //   // 开始节点
+        //   // return ` (${ast.inputs.map(i => i.name).join(',')}){ with(this){${walk(ast.children)}`
+        //   return `with(this){${walk(ast.children)} /* with */}`
+        // }
         case 2: {
           // 结束节点
-          return `return {${ast.output
-            .map(o => `${o.key}:${o.value}`)
-            .join(',')}};`
+          return `return ${
+            Array.isArray(ast.output)
+              ? `{${ast.output.map(o => `${o.key}:${o.value}`).join(',')}}`
+              : `${ast.output}`
+          };`
         }
         case 3: {
           // IF节点
@@ -116,6 +118,35 @@ function compile(ast) {
     }
   }
   return new Function(walk(ast))()
+}
+
+const selectAst = {
+  type: 0,
+  name: 'query',
+  children: [
+    {
+      type: 7,
+      output: 'persons',
+      name: 'select',
+      inputs: [
+        {
+          value: ['id', 'name']
+        },
+        {
+          value: 0
+        },
+        {
+          value: 2
+        }
+      ],
+      children: [
+        {
+          type: 2,
+          output: 'persons'
+        }
+      ]
+    }
+  ]
 }
 
 const ast = {
@@ -230,6 +261,17 @@ const ast = {
                                 {
                                   name: 'i'
                                 }
+                              ],
+                              children: [
+                                {
+                                  type: 3,
+                                  express: 'i > 3',
+                                  body: [
+                                    {
+                                      type: 8
+                                    }
+                                  ]
+                                }
                               ]
                             }
                           ]
@@ -256,8 +298,10 @@ const ast2 = {
 
 // console.log(compile(ast).toString());
 // compile(ast).call({ require }, 6, 6).then(console.log);
-// generate(parse(ast)).call({ require }, 6, 6);
-console.log(generate(parse(ast)).toString())
+generate(parse(selectAst))
+  .call({ require }, 6, 6)
+  .then(console.log)
+// console.log(generate(parse(selectAst)).toString())
 // new Function('return async function(a) { return a; }')()(1).then((a) => {
 //   console.log(a);
 // });
