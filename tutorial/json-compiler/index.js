@@ -1,3 +1,6 @@
+const parse = require('./parse')
+const generate = require('./generate')
+
 // const fs = require('fs');
 // const path = require('path');
 // const json = require('./data.json');
@@ -62,8 +65,9 @@ function compile(ast) {
       switch (ast.type) {
         case 0: {
           // 根节点
-          // return `function ${ast.name}${walk(ast.children)}`;
-          return walk(ast.children)
+          return `return async function(${ast.inputs
+            .map(i => i.name)
+            .join(',')}) { ${walk(ast.children)} }`
         }
         case 1: {
           // 开始节点
@@ -100,21 +104,18 @@ function compile(ast) {
         }
         case 7: {
           // Logic节点
-          return `const ${ast.output} = require('./lib/${
-            ast.name
-          }').call(this, ${ast.inputs.map(i => i.name).join(',')});${walk(
-            ast.children
-          )}`
+          return `${
+            ast.output ? `const ${ast.output} = ` : ''
+          }await require('./lib/${ast.name}').call(this, ${ast.inputs
+            .map(i => (i.name ? i.name : JSON.stringify(i.value)))
+            .join(',')});${walk(ast.children)}`
         }
       }
     } else {
       return ''
     }
   }
-  return new Function(
-    ast.inputs.map(i => i.name).join(','),
-    walk(ast.children[0])
-  )
+  return new Function(walk(ast))()
 }
 
 const ast = {
@@ -215,10 +216,21 @@ const ast = {
                       body: [
                         {
                           type: 7,
-                          name: 'log',
+                          name: 'delay',
                           inputs: [
                             {
-                              name: 'i'
+                              value: 5000
+                            }
+                          ],
+                          children: [
+                            {
+                              type: 7,
+                              name: 'log',
+                              inputs: [
+                                {
+                                  name: 'i'
+                                }
+                              ]
                             }
                           ]
                         }
@@ -243,4 +255,9 @@ const ast2 = {
 }
 
 // console.log(compile(ast).toString());
-console.log(compile(ast).call({ require }, 3, 6))
+// compile(ast).call({ require }, 6, 6).then(console.log);
+// generate(parse(ast)).call({ require }, 6, 6);
+console.log(generate(parse(ast)).toString())
+// new Function('return async function(a) { return a; }')()(1).then((a) => {
+//   console.log(a);
+// });
