@@ -1,5 +1,6 @@
 const parse = require('./parse')
 const generate = require('./generate')
+const run = require('./run')
 
 // const fs = require('fs');
 // const path = require('path');
@@ -36,13 +37,13 @@ const generate = require('./generate')
 //   await delay();
 // })
 
-function run(a, b) {
-  with (this) {
-    console.log(a, b, c)
-    locigA.call(this, a)
-    return c
-  }
-}
+// function run(a, b) {
+//   with (this) {
+//     console.log(a, b, c)
+//     locigA.call(this, a)
+//     return c
+//   }
+// }
 
 // run.call({ c: 3 }, 1, 2);
 
@@ -298,9 +299,10 @@ const ast2 = {
 
 // console.log(compile(ast).toString());
 // compile(ast).call({ require }, 6, 6).then(console.log);
-generate(parse(selectAst))
-  .call({ require }, 6, 6)
-  .then(console.log)
+// generate(parse(selectAst))
+//   .call({ require }, 6, 6)
+//   .then(console.log)
+run(ast)(3, 2).then(console.log)
 // console.log(generate(parse(selectAst)).toString())
 // new Function('return async function(a) { return a; }')()(1).then((a) => {
 //   console.log(a);

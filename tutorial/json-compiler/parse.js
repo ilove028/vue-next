@@ -15,6 +15,7 @@ module.exports = function parse(ast) {
         // 开始节点
         // return ` (${ast.inputs.map(i => i.name).join(',')}){ with(this){${parse(ast.children)}`
         // return `with(this){${parse(ast.children)} /* with */}`
+        return `${parse(ast.children)}`
       }
       case 2: {
         // 结束节点
@@ -49,8 +50,8 @@ module.exports = function parse(ast) {
       case 7: {
         // Logic节点
         return `${
-          ast.output ? `const ${ast.output} = ` : ''
-        }await require('./lib/${ast.name}').call(this, ${ast.inputs
+          ast.output ? `const ${ast.output} =` : ''
+        } await require('./lib/${ast.name}').call(this, ${ast.inputs
           .map(i => (i.name ? i.name : JSON.stringify(i.value)))
           .join(',')});${parse(ast.children)}`
       }
