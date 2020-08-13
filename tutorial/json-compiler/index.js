@@ -1,3 +1,6 @@
+const parse = require('./parse')
+const generate = require('./generate')
+
 // const fs = require('fs');
 // const path = require('path');
 // const json = require('./data.json');
@@ -62,19 +65,22 @@ function compile(ast) {
       switch (ast.type) {
         case 0: {
           // 根节点
-          // return `function ${ast.name}${walk(ast.children)}`;
-          return walk(ast.children)
+          return `return async function(${ast.inputs
+            .map(i => i.name)
+            .join(',')}) { with(this) { ${walk(ast.children)} } }`
         }
-        case 1: {
-          // 开始节点
-          // return ` (${ast.inputs.map(i => i.name).join(',')}){ with(this){${walk(ast.children)}`
-          return `with(this){${walk(ast.children)} /* with */}`
-        }
+        // case 1: {
+        //   // 开始节点
+        //   // return ` (${ast.inputs.map(i => i.name).join(',')}){ with(this){${walk(ast.children)}`
+        //   return `with(this){${walk(ast.children)} /* with */}`
+        // }
         case 2: {
           // 结束节点
-          return `return {${ast.output
-            .map(o => `${o.key}:${o.value}`)
-            .join(',')}};`
+          return `return ${
+            Array.isArray(ast.output)
+              ? `{${ast.output.map(o => `${o.key}:${o.value}`).join(',')}}`
+              : `${ast.output}`
+          };`
         }
         case 3: {
           // IF节点
@@ -100,21 +106,47 @@ function compile(ast) {
         }
         case 7: {
           // Logic节点
-          return `const ${ast.output} = require('./lib/${
-            ast.name
-          }').call(this, ${ast.inputs.map(i => i.name).join(',')});${walk(
-            ast.children
-          )}`
+          return `${
+            ast.output ? `const ${ast.output} = ` : ''
+          }await require('./lib/${ast.name}').call(this, ${ast.inputs
+            .map(i => (i.name ? i.name : JSON.stringify(i.value)))
+            .join(',')});${walk(ast.children)}`
         }
       }
     } else {
       return ''
     }
   }
-  return new Function(
-    ast.inputs.map(i => i.name).join(','),
-    walk(ast.children[0])
-  )
+  return new Function(walk(ast))()
+}
+
+const selectAst = {
+  type: 0,
+  name: 'query',
+  children: [
+    {
+      type: 7,
+      output: 'persons',
+      name: 'select',
+      inputs: [
+        {
+          value: ['id', 'name']
+        },
+        {
+          value: 0
+        },
+        {
+          value: 2
+        }
+      ],
+      children: [
+        {
+          type: 2,
+          output: 'persons'
+        }
+      ]
+    }
+  ]
 }
 
 const ast = {
@@ -215,10 +247,32 @@ const ast = {
                       body: [
                         {
                           type: 7,
-                          name: 'log',
+                          name: 'delay',
                           inputs: [
                             {
-                              name: 'i'
+                              value: 5000
+                            }
+                          ],
+                          children: [
+                            {
+                              type: 7,
+                              name: 'log',
+                              inputs: [
+                                {
+                                  name: 'i'
+                                }
+                              ],
+                              children: [
+                                {
+                                  type: 3,
+                                  express: 'i > 3',
+                                  body: [
+                                    {
+                                      type: 8
+                                    }
+                                  ]
+                                }
+                              ]
                             }
                           ]
                         }
@@ -243,4 +297,11 @@ const ast2 = {
 }
 
 // console.log(compile(ast).toString());
-console.log(compile(ast).call({ require }, 3, 6))
+// compile(ast).call({ require }, 6, 6).then(console.log);
+generate(parse(selectAst))
+  .call({ require }, 6, 6)
+  .then(console.log)
+// console.log(generate(parse(selectAst)).toString())
+// new Function('return async function(a) { return a; }')()(1).then((a) => {
+//   console.log(a);
+// });
