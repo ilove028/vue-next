@@ -231,7 +231,11 @@ export function trigger(
       // this can be caused by operations like foo.value++
       // do not trigger or we end in an infinite loop
       // pre version 532f58fc391f9361d0521bc96791ff7dee11e90d
-      effectsToAdd.forEach(effect => effects.add(effect))
+      effectsToAdd.forEach(effect => {
+        if (effect !== activeEffect) {
+          effects.add(effect)
+        }
+      })
     }
   }
 
