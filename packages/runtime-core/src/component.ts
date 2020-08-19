@@ -341,6 +341,12 @@ const emptyAppContext = createAppContext()
 
 let uid = 0
 
+/**
+ * Just set instance props.
+ * @param vnode
+ * @param parent
+ * @param suspense
+ */
 export function createComponentInstance(
   vnode: VNode,
   parent: ComponentInternalInstance | null,
@@ -580,6 +586,11 @@ export function registerRuntimeCompiler(_compile: any) {
   compile = _compile
 }
 
+/**
+ * set render function if not set render compile template
+ * @param instance
+ * @param isSSR
+ */
 function finishComponentSetup(
   instance: ComponentInternalInstance,
   isSSR: boolean
