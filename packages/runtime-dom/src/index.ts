@@ -24,7 +24,7 @@ declare module '@vue/reactivity' {
 const rendererOptions = extend({ patchProp, forcePatchProp }, nodeOps)
 
 // lazy create the renderer - this makes core renderer logic tree-shakable
-// in case the user only imports reactivity utilities from Vue.
+// in case the user only imports reactivity utilities from  Vue.
 let renderer: Renderer<Element> | HydrationRenderer
 
 let enabledHydration = false
