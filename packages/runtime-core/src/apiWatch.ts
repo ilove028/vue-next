@@ -233,6 +233,7 @@ function doWatch(
   }
 
   let oldValue = isArray(source) ? [] : INITIAL_WATCHER_VALUE
+  // job 是封装的effect
   const job: SchedulerJob = () => {
     if (!runner.active) {
       return
@@ -242,6 +243,7 @@ function doWatch(
       const newValue = runner()
       if (deep || isRefSource || hasChanged(newValue, oldValue)) {
         // cleanup before running cb again
+        // if onInvalidate is invoke cleanup is seted.
         if (cleanup) {
           cleanup()
         }
@@ -263,6 +265,7 @@ function doWatch(
   // it is allowed to self-trigger (#1727)
   job.allowRecurse = !!cb
 
+  // scheduler 是一个包装函数 根据flush 决定job函数执行时机
   let scheduler: (job: () => any) => void
   if (flush === 'sync') {
     scheduler = job
