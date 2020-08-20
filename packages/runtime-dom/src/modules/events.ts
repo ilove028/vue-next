@@ -125,6 +125,11 @@ function createInvoker(
   return invoker
 }
 
+/**
+ * 封装 stopImmediatePropagation 如果 有一个函数调用 则停止调用
+ * @param e
+ * @param value
+ */
 function patchStopImmediatePropagation(
   e: Event,
   value: EventValue
