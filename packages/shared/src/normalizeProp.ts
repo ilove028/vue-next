@@ -56,6 +56,10 @@ export function stringifyStyle(styles: NormalizedStyle | undefined): string {
   return ret
 }
 
+/**
+ * return string space separated class name
+ * @param value
+ */
 export function normalizeClass(value: unknown): string {
   let res = ''
   if (isString(value)) {

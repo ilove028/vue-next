@@ -50,6 +50,9 @@ export const hydrate = ((...args) => {
   ensureHydrationRenderer().hydrate(...args)
 }) as RootHydrateFunction
 
+/**
+ * create vue app and proxy mount function
+ */
 export const createApp = ((...args) => {
   const app = ensureRenderer().createApp(...args)
 
