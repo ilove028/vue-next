@@ -667,6 +667,17 @@ function baseCreateRenderer(
     hostRemove(vnode.anchor!)
   }
 
+  /**
+   * mount or patch element base on wheather n1 is null
+   * @param n1
+   * @param n2
+   * @param container
+   * @param anchor
+   * @param parentComponent
+   * @param parentSuspense
+   * @param isSVG
+   * @param optimized
+   */
   const processElement = (
     n1: VNode | null,
     n2: VNode,

@@ -128,6 +128,13 @@ export function watch<T = any>(
   return doWatch(source, cb, options)
 }
 
+/**
+ * 将watch对象封装为effect 回调函数使用schedule封装
+ * @param source
+ * @param cb
+ * @param param2
+ * @param instance
+ */
 function doWatch(
   source: WatchSource | WatchSource[] | WatchEffect,
   cb: WatchCallback | null,

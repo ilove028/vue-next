@@ -24,7 +24,7 @@ declare module '@vue/reactivity' {
 const rendererOptions = extend({ patchProp, forcePatchProp }, nodeOps)
 
 // lazy create the renderer - this makes core renderer logic tree-shakable
-// in case the user only imports reactivity utilities from Vue.
+// in case the user only imports reactivity utilities from  Vue.
 let renderer: Renderer<Element> | HydrationRenderer
 
 let enabledHydration = false
@@ -51,6 +51,9 @@ export const hydrate = ((...args) => {
   ensureHydrationRenderer().hydrate(...args)
 }) as RootHydrateFunction
 
+/**
+ * create vue app and proxy mount function
+ */
 export const createApp = ((...args) => {
   // ensureRenderer 生成render函数 render函数通过闭包引用着各种vnode操作
   // createApp 生成普通对象app app 通过闭包引用render函数
