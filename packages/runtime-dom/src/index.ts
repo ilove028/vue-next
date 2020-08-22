@@ -30,6 +30,7 @@ let renderer: Renderer<Element> | HydrationRenderer
 let enabledHydration = false
 
 function ensureRenderer() {
+  // 这里rendererOptions来自浏览器node ops合并
   return renderer || (renderer = createRenderer<Node, Element>(rendererOptions))
 }
 
@@ -51,6 +52,8 @@ export const hydrate = ((...args) => {
 }) as RootHydrateFunction
 
 export const createApp = ((...args) => {
+  // ensureRenderer 生成render函数 render函数通过闭包引用着各种vnode操作
+  // createApp 生成普通对象app app 通过闭包引用render函数
   const app = ensureRenderer().createApp(...args)
 
   if (__DEV__) {

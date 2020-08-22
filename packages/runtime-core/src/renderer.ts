@@ -398,6 +398,11 @@ function baseCreateRenderer(
 ): HydrationRenderer
 
 // implementation
+/**
+ * 通过闭包引用render时需要的操作
+ * @param options
+ * @param createHydrationFns
+ */
 function baseCreateRenderer(
   options: RendererOptions,
   createHydrationFns?: typeof createHydrationFunctions

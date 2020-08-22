@@ -1,0 +1,15 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+.skeleton {
+  background: #CCC;
+}
+
+.skeleton::after {
+  content: ' ';
+  display: inline-block;
+  height: 20px;
+  width: 40px;
+}
