@@ -1325,6 +1325,16 @@ function baseCreateRenderer(
     }
   }
 
+  /**
+   * create reactive effect for rendering
+   * @param instance
+   * @param initialVNode
+   * @param container
+   * @param anchor
+   * @param parentSuspense
+   * @param isSVG
+   * @param optimized
+   */
   const setupRenderEffect: SetupRenderEffectFn = (
     instance,
     initialVNode,

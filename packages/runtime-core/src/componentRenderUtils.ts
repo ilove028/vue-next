@@ -37,6 +37,10 @@ export function markAttrsAccessed() {
   accessedAttrs = true
 }
 
+/**
+ * invoke render create vnode subtree.
+ * @param instance
+ */
 export function renderComponentRoot(
   instance: ComponentInternalInstance
 ): VNode {
