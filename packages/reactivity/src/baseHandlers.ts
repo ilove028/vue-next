@@ -1,4 +1,12 @@
-import { reactive, readonly, toRaw, ReactiveFlags, Target } from './reactive'
+import {
+  reactive,
+  readonly,
+  toRaw,
+  ReactiveFlags,
+  Target,
+  readonlyMap,
+  reactiveMap
+} from './reactive'
 import { TrackOpTypes, TriggerOpTypes } from './operations'
 import { track, trigger, ITERATE_KEY } from './effect'
 import {
@@ -7,6 +15,7 @@ import {
   isSymbol,
   hasChanged,
   isArray,
+  isIntegerKey,
   extend
 } from '@vue/shared'
 import { isRef } from './ref'
@@ -23,17 +32,17 @@ const readonlyGet = /*#__PURE__*/ createGetter(true)
 const shallowReadonlyGet = /*#__PURE__*/ createGetter(true, true)
 
 const arrayInstrumentations: Record<string, Function> = {}
-;['includes', 'indexOf', 'lastIndexOf'].forEach(key => {
-  arrayInstrumentations[key] = function(...args: any[]): any {
-    const arr = toRaw(this) as any
-    for (let i = 0, l = (this as any).length; i < l; i++) {
+;(['includes', 'indexOf', 'lastIndexOf'] as const).forEach(key => {
+  arrayInstrumentations[key] = function(this: unknown[], ...args: unknown[]) {
+    const arr = toRaw(this)
+    for (let i = 0, l = this.length; i < l; i++) {
       track(arr, TrackOpTypes.GET, i + '')
     }
     // we run the method using the original args first (which may be reactive)
-    const res = arr[key](...args)
+    const res = (arr[key] as any)(...args)
     if (res === -1 || res === false) {
       // if that didn't work, run it again using raw values.
-      return arr[key](...args.map(toRaw))
+      return (arr[key] as any)(...args.map(toRaw))
     } else {
       return res
     }
@@ -48,10 +57,7 @@ function createGetter(isReadonly = false, shallow = false) {
       return isReadonly
     } else if (
       key === ReactiveFlags.RAW &&
-      receiver ===
-        (isReadonly
-          ? target[ReactiveFlags.READONLY]
-          : target[ReactiveFlags.REACTIVE])
+      receiver === (isReadonly ? readonlyMap : reactiveMap).get(target)
     ) {
       return target
     }
@@ -82,10 +88,7 @@ function createGetter(isReadonly = false, shallow = false) {
 
     if (isRef(res)) {
       // ref unwrapping - does not apply for Array + integer key.
-      const shouldUnwrap =
-        !targetIsArray ||
-        keyIsSymbol ||
-        '' + parseInt(key as string, 10) !== key
+      const shouldUnwrap = !targetIsArray || !isIntegerKey(key)
       return shouldUnwrap ? res.value : res
     }
 
@@ -121,7 +124,10 @@ function createSetter(shallow = false) {
       // in shallow mode, objects are set as-is regardless of reactive or not
     }
 
-    const hadKey = hasOwn(target, key)
+    const hadKey =
+      isArray(target) && isIntegerKey(key)
+        ? Number(key) < target.length
+        : hasOwn(target, key)
     const result = Reflect.set(target, key, value, receiver)
     // don't trigger if target is something up in the prototype chain of original
     if (target === toRaw(receiver)) {
@@ -168,8 +174,6 @@ export const mutableHandlers: ProxyHandler<object> = {
 
 export const readonlyHandlers: ProxyHandler<object> = {
   get: readonlyGet,
-  has,
-  ownKeys,
   set(target, key) {
     if (__DEV__) {
       console.warn(
