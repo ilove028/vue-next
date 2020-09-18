@@ -513,6 +513,11 @@ export function validateComponentName(name: string, config: AppConfig) {
 
 export let isInSSRComponentSetup = false
 
+/**
+ * 初始化props和slot
+ * @param instance
+ * @param isSSR
+ */
 export function setupComponent(
   instance: ComponentInternalInstance,
   isSSR = false

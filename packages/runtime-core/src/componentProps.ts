@@ -127,6 +127,7 @@ export function initProps(
 
   if (isStateful) {
     // stateful
+    // 因为属性对象在setFullProps被浅层拷贝 这里只需要浅层响应式？
     instance.props = isSSR ? props : shallowReactive(props)
   } else {
     if (!instance.type.props) {
@@ -241,6 +242,13 @@ export function updateProps(
   }
 }
 
+/**
+ * 将rowPrps按照props 和 emits配置设置到prop和attrs上
+ * @param instance
+ * @param rawProps
+ * @param props
+ * @param attrs
+ */
 function setFullProps(
   instance: ComponentInternalInstance,
   rawProps: Data | null,
