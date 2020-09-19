@@ -27,7 +27,8 @@ import {
   Data,
   ComponentInternalInstance,
   ComponentOptions,
-  ConcreteComponent
+  ConcreteComponent,
+  setCurrentInstance
 } from './component'
 import { isEmitListener } from './componentEmits'
 import { InternalObjectKey } from './vnode'
@@ -180,7 +181,8 @@ export function updateProps(
               options,
               rawCurrentProps,
               camelizedKey,
-              value
+              value,
+              instance
             )
           }
         } else {
@@ -215,7 +217,8 @@ export function updateProps(
               options,
               rawProps || EMPTY_OBJ,
               key,
-              undefined
+              undefined,
+              instance
             )
           }
         } else {
@@ -285,7 +288,8 @@ function setFullProps(
         options!,
         rawCurrentProps,
         key,
-        rawCurrentProps[key]
+        rawCurrentProps[key],
+        instance
       )
     }
   }
@@ -295,7 +299,8 @@ function resolvePropValue(
   options: NormalizedProps,
   props: Data,
   key: string,
-  value: unknown
+  value: unknown,
+  instance: ComponentInternalInstance
 ) {
   const opt = options[key]
   if (opt != null) {
@@ -303,10 +308,13 @@ function resolvePropValue(
     // default values
     if (hasDefault && value === undefined) {
       const defaultValue = opt.default
-      value =
-        opt.type !== Function && isFunction(defaultValue)
-          ? defaultValue(props)
-          : defaultValue
+      if (opt.type !== Function && isFunction(defaultValue)) {
+        setCurrentInstance(instance)
+        value = defaultValue(props)
+        setCurrentInstance(null)
+      } else {
+        value = defaultValue
+      }
     }
     // boolean casting
     if (opt[BooleanFlags.shouldCast]) {
