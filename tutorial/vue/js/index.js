@@ -25,6 +25,9 @@ const Counter = {
   template: `<div>{{ count }}</div>`,
   setup() {
     const { count } = useAuotIncrement()
+    Vue.onMounted(() => {
+      console.log(`Counter mounted`)
+    })
     return {
       count
     }
@@ -47,6 +50,7 @@ const App = {
     }
   },
   mounted() {
+    console.log(`App mounted`)
     this.toggle()
   }
 }
