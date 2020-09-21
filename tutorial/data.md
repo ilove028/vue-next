@@ -1,10 +1,18 @@
+方案B 客户端只做数据展示和事件发送 服务器端完全管理状态 包括
+
 1: 长链路中如何保证资源释放 客户端不再进行沟通
 
-2： 设计sessionId 用于整个会话 断开后也会一致 socketID 当此连接的socketId 每次连接会变化
+2: 有session context 用于整个会话 和 web会话一样 暂时可以使用cookies实现
+   有app context 用于页面一次刷新一个app context sesson 和 app 是一对多关系
+   有page context app 和 page是 一对多
+   有 socket context 一个socket连接是一个 socket context app和context是一对多关系
+   component page 组件作用域即 page和component是一对多关系
 
 3： 服务器消息 socket connect socket disconnect 页面 pagechange 路由事件 定时消息
 
-4： 服务器有当前页面信息 组件信息
+5：服务器和每个客户端都可以理解为远程服务 服务器通过工具配置的流程图执行逻辑 客户端远程调用服务器配置的方法 服务器通过远程调用获取客户端状态 设置状态
+
+4： 服务器有当前页面信息 组件信息 服务器不保存页面 比如 组件数据 页面数据在哪个页面等 UI json数据 这些都可以通过远程调用实现 服务器只保存用户登录数据 
 
 global.path
 global.query
