@@ -975,7 +975,7 @@ function emitError(
 }
 
 /**
- * Is parse end different mode has different logic.
+ * children parse end
  * @param context
  * @param mode
  * @param ancestors

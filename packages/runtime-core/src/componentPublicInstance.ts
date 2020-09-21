@@ -230,6 +230,10 @@ export interface ComponentRenderContext {
   _: ComponentInternalInstance
 }
 
+/**
+ * proxy ctx setupSate data props ...
+ * and cache access to avoid hasown cost.
+ */
 export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
   get({ _: instance }: ComponentRenderContext, key: string) {
     const {

@@ -254,6 +254,10 @@ export function createBlock(
   return vnode
 }
 
+/**
+ * __v_isVNode
+ * @param value
+ */
 export function isVNode(value: any): value is VNode {
   return value ? value.__v_isVNode === true : false
 }
@@ -436,6 +440,7 @@ function _createVNode(
     vnode.ssFallback = fallback
   }
 
+  // collect vnode to currentblock as if it is dynamic
   if (
     shouldTrack > 0 &&
     // avoid a block node from tracking itself
@@ -575,6 +580,12 @@ export function cloneIfMounted(child: VNode): VNode {
   return child.el === null ? child : cloneVNode(child)
 }
 
+/**
+ * according children reset vnode shapeFlag
+ * if children is objet call slot();
+ * @param vnode
+ * @param children
+ */
 export function normalizeChildren(vnode: VNode, children: unknown) {
   let type = 0
   const { shapeFlag } = vnode

@@ -22,7 +22,11 @@ function useAuotIncrement() {
 }
 
 const Counter = {
-  template: `<div>{{ count }}</div>`,
+  template: `
+    <div>
+      <slot :count="count"/>
+    </div>
+  `,
   setup() {
     const { count } = useAuotIncrement()
     Vue.onMounted(() => {
@@ -35,7 +39,19 @@ const Counter = {
 }
 
 const App = {
-  template: '<counter v-if="show" />',
+  template: `
+    <h1>Static</h1>
+    <counter v-slot="{ count }">
+      <span>
+        Total: {{count}}
+      </span>
+    </counter>
+    <ul>
+      <li>1</li>
+      <li>2</li>
+      <li>3</li>
+    </ul>
+  `,
   data() {
     return {
       show: true
@@ -45,7 +61,7 @@ const App = {
     toggle() {
       setTimeout(() => {
         this.show = !this.show
-        this.toggle()
+        // this.toggle()
       }, 5000)
     }
   },
@@ -55,6 +71,10 @@ const App = {
   }
 }
 
+// TODO
+// prop class style
+// ref normalizeChildren
+// keep alive suspense
 Vue.createApp(App)
   .component('counter', Counter)
   .mount('#app')

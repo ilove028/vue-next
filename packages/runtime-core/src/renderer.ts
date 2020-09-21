@@ -1279,6 +1279,16 @@ function baseCreateRenderer(
     }
   }
 
+  /**
+   * create component instance set up instance set render effect // render.call
+   * @param initialVNode
+   * @param container
+   * @param anchor
+   * @param parentComponent
+   * @param parentSuspense
+   * @param isSVG
+   * @param optimized
+   */
   const mountComponent: MountComponentFn = (
     initialVNode,
     container,

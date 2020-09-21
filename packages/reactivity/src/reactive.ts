@@ -183,6 +183,10 @@ export function isReadonly(value: unknown): boolean {
   return !!(value && (value as Target)[ReactiveFlags.IS_READONLY])
 }
 
+/**
+ * value has ReactiveFlags.IS_REACTIVE or ReactiveFlags.IS_READONLY flag
+ * @param value
+ */
 export function isProxy(value: unknown): boolean {
   return isReactive(value) || isReadonly(value)
 }

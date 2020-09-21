@@ -279,7 +279,8 @@ function setFullProps(
       }
     }
   }
-
+  // 对于我们的声明的 props，我们可以增加像default这样的关键字，在我们没有传递的时候使用默认值，
+  // 或者像boolean类型的 props，如果没有传递那么undefined类型不匹配，就默认给 false, resolvePropValue方法的内容也证明了我这个观点
   if (needCastKeys) {
     const rawCurrentProps = toRaw(props)
     for (let i = 0; i < needCastKeys.length; i++) {
@@ -331,11 +332,19 @@ function resolvePropValue(
   return value
 }
 
+/**
+ * recursive extend app mixin,extends,local mixin
+ * overwrite
+ * @param comp
+ * @param appContext
+ * @param asMixin
+ */
 export function normalizePropsOptions(
   comp: ConcreteComponent,
   appContext: AppContext,
   asMixin = false
 ): NormalizedPropsOptions {
+  // different app cache different use appid as key
   const appId = appContext.app ? appContext.app._uid : -1
   const cache = comp.__props || (comp.__props = {})
   const cached = cache[appId]
@@ -344,7 +353,9 @@ export function normalizePropsOptions(
   }
 
   const raw = comp.props
+  // normalized prop
   const normalized: NormalizedPropsOptions[0] = {}
+  // need set default value
   const needCastKeys: NormalizedPropsOptions[1] = []
 
   // apply mixin/extends props
@@ -366,7 +377,7 @@ export function normalizePropsOptions(
       comp.mixins.forEach(extendProps)
     }
   }
-
+  // do not have prop options and has no extends set caceh to empty
   if (!raw && !hasExtends) {
     return (cache[appId] = EMPTY_ARR)
   }

@@ -416,6 +416,7 @@ export function createComponentInstance(
     parent,
     appContext,
     root: null!, // to be immediately set
+    // 新的组件 vnode
     next: null,
     subTree: null!, // will be set synchronously right after creation
     update: null!, // will be set synchronously right after creation
@@ -424,6 +425,7 @@ export function createComponentInstance(
     withProxy: null,
     effects: null,
     provides: parent ? parent.provides : Object.create(appContext.provides),
+    // 渲染代理的属性访问缓存 => 访问代理优化点，定义缓存读取源
     accessCache: null!,
     renderCache: [],
 
@@ -601,6 +603,7 @@ function setupStatefulComponent(
         )
       }
     } else {
+      // 处理 setup 执行结果
       handleSetupResult(instance, setupResult, isSSR)
     }
   } else {

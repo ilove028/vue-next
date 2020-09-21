@@ -1,4 +1,7 @@
 export const enum ShapeFlags {
+  /**
+   * host element e.g DIV span
+   */
   ELEMENT = 1,
   FUNCTIONAL_COMPONENT = 1 << 1,
   STATEFUL_COMPONENT = 1 << 2,

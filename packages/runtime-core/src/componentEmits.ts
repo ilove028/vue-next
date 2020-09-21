@@ -104,6 +104,7 @@ export function emit(
   }
 }
 
+// same as normalizeProps
 export function normalizeEmitsOptions(
   comp: ConcreteComponent,
   appContext: AppContext,
