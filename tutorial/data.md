@@ -11,8 +11,14 @@
 3： 服务器消息 socket connect socket disconnect 页面 pagechange 路由事件 定时消息
 
 5：服务器和每个客户端都可以理解为远程服务 服务器通过工具配置的流程图执行逻辑 客户端远程调用服务器配置的方法 服务器通过远程调用获取客户端状态 设置状态
+   远程调用协议 JSON-RPC https://blog.csdn.net/hahahacff/article/details/29119077
 
 4： 服务器有当前页面信息 组件信息 服务器不保存页面 比如 组件数据 页面数据在哪个页面等 UI json数据 这些都可以通过远程调用实现 服务器只保存用户登录数据 
+
+5: 也要处理原来的http 比如下载
+6： 复杂的整点填报怎么做
+7： 数据量校验 格式化 数据校验等前置校验
+8: 区分客户端
 
 global.path
 global.query

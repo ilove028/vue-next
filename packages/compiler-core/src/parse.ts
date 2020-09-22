@@ -212,6 +212,7 @@ function parseChildren(
       for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i]
         if (node.type === NodeTypes.TEXT) {
+          // 不存在不是制表符回车换行空格 等价于全是制表符 回车 换行空格
           if (!/[^\t\r\n\f ]/.test(node.content)) {
             const prev = nodes[i - 1]
             const next = nodes[i + 1]
@@ -411,7 +412,7 @@ function parseElement(
   }
 
   element.loc = getSelection(context, element.loc.start)
-
+  // after parsed end tag if tag is pre or vpre boundary set flag to false.
   if (isPreBoundary) {
     context.inPre = false
   }
