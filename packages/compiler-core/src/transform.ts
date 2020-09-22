@@ -355,6 +355,9 @@ export function traverseNode(
   // apply transform plugins
   const { nodeTransforms } = context
   const exitFns = []
+  // once if for expression(interpolation and other directive exclusive v-for v-on) slotoutlet
+  // element(component element set codegen) slotScope(track slot depth) text(merge text) ignore(script style DOM)
+  // transform(style DOM) warning(transition)
   for (let i = 0; i < nodeTransforms.length; i++) {
     const onExit = nodeTransforms[i](node, context)
     if (onExit) {
@@ -366,6 +369,7 @@ export function traverseNode(
     }
     if (!context.currentNode) {
       // node was removed
+      // like script node
       return
     } else {
       // node may have been replaced
@@ -404,6 +408,7 @@ export function traverseNode(
   }
 
   // exit transforms
+  // text | interpolation node exitFns lenght is 0
   context.currentNode = node
   let i = exitFns.length
   while (i--) {

@@ -72,7 +72,7 @@ const App = {
 }
 
 // TODO
-// prop class style
+// prop class style v-once bind model on
 // ref normalizeChildren
 // keep alive suspense
 Vue.createApp(App)

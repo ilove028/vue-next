@@ -68,6 +68,7 @@ export const transformElement: NodeTransform = (node, context) => {
   }
   // perform the work on exit, after all child expressions have been
   // processed and merged.
+  // set patchFlag to identify weather is static
   return function postTransformElement() {
     const { tag, props } = node
     const isComponent = node.tagType === ElementTypes.COMPONENT

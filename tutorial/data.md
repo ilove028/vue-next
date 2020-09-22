@@ -12,6 +12,9 @@
 
 5：服务器和每个客户端都可以理解为远程服务 服务器通过工具配置的流程图执行逻辑 客户端远程调用服务器配置的方法 服务器通过远程调用获取客户端状态 设置状态
    远程调用协议 JSON-RPC https://blog.csdn.net/hahahacff/article/details/29119077
+   http://wiki.geekdream.com/Specification/json-rpc_2.0.html
+   https://github.com/elpheria/rpc-websockets#readme
+   https://github.com/open-rpc/client-js#readme
 
 4： 服务器有当前页面信息 组件信息 服务器不保存页面 比如 组件数据 页面数据在哪个页面等 UI json数据 这些都可以通过远程调用实现 服务器只保存用户登录数据 
 

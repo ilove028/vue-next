@@ -33,6 +33,7 @@ const isLiteralWhitelisted = /*#__PURE__*/ makeMap('true,false,null,this')
 
 export const transformExpression: NodeTransform = (node, context) => {
   if (node.type === NodeTypes.INTERPOLATION) {
+    // in broswer it did nothing
     node.content = processExpression(
       node.content as SimpleExpressionNode,
       context
