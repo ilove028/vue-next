@@ -75,6 +75,7 @@ const App = {
 // prop class style v-once bind model on
 // ref normalizeChildren
 // keep alive suspense
+// render 闭包引用着hosit 但是啥时运行呢？ 如果是编译好的render
 Vue.createApp(App)
   .component('counter', Counter)
   .mount('#app')
