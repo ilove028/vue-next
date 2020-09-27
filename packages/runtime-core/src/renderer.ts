@@ -213,7 +213,8 @@ type UnmountFn = (
   vnode: VNode,
   parentComponent: ComponentInternalInstance | null,
   parentSuspense: SuspenseBoundary | null,
-  doRemove?: boolean
+  doRemove?: boolean,
+  optimized?: boolean
 ) => void
 
 type RemoveFn = (vnode: VNode) => void
@@ -223,6 +224,7 @@ type UnmountChildrenFn = (
   parentComponent: ComponentInternalInstance | null,
   parentSuspense: SuspenseBoundary | null,
   doRemove?: boolean,
+  optimized?: boolean,
   start?: number
 ) => void
 
@@ -1740,7 +1742,14 @@ function baseCreateRenderer(
     }
     if (oldLength > newLength) {
       // remove old
-      unmountChildren(c1, parentComponent, parentSuspense, true, commonLength)
+      unmountChildren(
+        c1,
+        parentComponent,
+        parentSuspense,
+        true,
+        false,
+        commonLength
+      )
     } else {
       // mount new
       mountChildren(
@@ -2061,7 +2070,8 @@ function baseCreateRenderer(
     vnode,
     parentComponent,
     parentSuspense,
-    doRemove = false
+    doRemove = false,
+    optimized = false
   ) => {
     const {
       type,
@@ -2109,8 +2119,14 @@ function baseCreateRenderer(
           (patchFlag > 0 && patchFlag & PatchFlags.STABLE_FRAGMENT))
       ) {
         // fast path for block nodes: only need to unmount dynamic children.
-        unmountChildren(dynamicChildren, parentComponent, parentSuspense)
-      } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        unmountChildren(
+          dynamicChildren,
+          parentComponent,
+          parentSuspense,
+          false,
+          true
+        )
+      } else if (!optimized && shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         unmountChildren(children as VNode[], parentComponent, parentSuspense)
       }
 
@@ -2250,10 +2266,11 @@ function baseCreateRenderer(
     parentComponent,
     parentSuspense,
     doRemove = false,
+    optimized = false,
     start = 0
   ) => {
     for (let i = start; i < children.length; i++) {
-      unmount(children[i], parentComponent, parentSuspense, doRemove)
+      unmount(children[i], parentComponent, parentSuspense, doRemove, optimized)
     }
   }
 
