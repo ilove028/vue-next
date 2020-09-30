@@ -40,34 +40,50 @@ const Counter = {
 
 const App = {
   template: `
-    <h1>Static</h1>
+    <h1 @click="toggle">Static</h1>
     <counter v-slot="{ count }">
-      <span>
+      <span v-if="count % 2 === 0">
+        Total: {{count}}
+      </span>
+      <span v-else style="color: red">
         Total: {{count}}
       </span>
     </counter>
-    <ul>
-      <li>1</li>
-      <li>2</li>
-      <li>3</li>
+    <ul v-once v-if="show">
+      <li v-for="i of list" :key="i.id">
+        <span :title="show">{{i.id}}</span>
+      </li>
     </ul>
   `,
+  props: {
+    initShow: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
-      show: true
+      show: this.initShow,
+      list: [
+        {
+          id: 1
+        },
+        {
+          id: 2
+        },
+        {
+          id: 3
+        }
+      ]
     }
   },
   methods: {
     toggle() {
-      setTimeout(() => {
-        this.show = !this.show
-        // this.toggle()
-      }, 5000)
+      this.show = !this.show
     }
   },
   mounted() {
     console.log(`App mounted`)
-    this.toggle()
   }
 }
 
@@ -76,6 +92,6 @@ const App = {
 // ref normalizeChildren
 // keep alive suspense
 // render 闭包引用着hosit 但是啥时运行呢？ 如果是编译好的render
-Vue.createApp(App)
+Vue.createApp(App, { initShow: true })
   .component('counter', Counter)
   .mount('#app')
