@@ -21,6 +21,7 @@ export interface ReactiveEffect<T = any> {
   raw: () => T
   deps: Array<Dep>
   options: ReactiveEffectOptions
+  allowRecurse: boolean
 }
 
 export interface ReactiveEffectOptions {
@@ -117,6 +118,7 @@ function createReactiveEffect<T = any>(
     }
   } as ReactiveEffect
   effect.id = uid++
+  effect.allowRecurse = !!options.allowRecurse
   effect._isEffect = true
   effect.active = true
   effect.raw = fn
@@ -233,7 +235,7 @@ export function trigger(
       // do not trigger or we end in an infinite loop
       // pre version 532f58fc391f9361d0521bc96791ff7dee11e90d
       effectsToAdd.forEach(effect => {
-        if (effect !== activeEffect || effect.options.allowRecurse) {
+        if (effect !== activeEffect || effect.allowRecurse) {
           effects.add(effect)
         }
       })

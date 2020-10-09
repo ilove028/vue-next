@@ -344,12 +344,8 @@ export function normalizePropsOptions(
   appContext: AppContext,
   asMixin = false
 ): NormalizedPropsOptions {
-  // different app cache different use appid as key
-  const appId = appContext.app ? appContext.app._uid : -1
-  const cache = comp.__props || (comp.__props = {})
-  const cached = cache[appId]
-  if (cached) {
-    return cached
+  if (!appContext.deopt && comp.__props) {
+    return comp.__props
   }
 
   const raw = comp.props
@@ -379,7 +375,7 @@ export function normalizePropsOptions(
   }
   // do not have prop options and has no extends set caceh to empty
   if (!raw && !hasExtends) {
-    return (cache[appId] = EMPTY_ARR)
+    return (comp.__props = EMPTY_ARR)
   }
 
   if (isArray(raw)) {
@@ -417,7 +413,16 @@ export function normalizePropsOptions(
     }
   }
 
-  return (cache[appId] = [normalized, needCastKeys])
+  return (comp.__props = [normalized, needCastKeys])
+}
+
+function validatePropName(key: string) {
+  if (key[0] !== '$') {
+    return true
+  } else if (__DEV__) {
+    warn(`Invalid prop name: "${key}" is a reserved property.`)
+  }
+  return false
 }
 
 // use function string name to check type constructors
@@ -458,18 +463,6 @@ function validateProps(props: Data, instance: ComponentInternalInstance) {
     if (opt == null) continue
     validateProp(key, rawValues[key], opt, !hasOwn(rawValues, key))
   }
-}
-
-/**
- * dev only
- */
-function validatePropName(key: string) {
-  if (key[0] !== '$') {
-    return true
-  } else if (__DEV__) {
-    warn(`Invalid prop name: "${key}" is a reserved property.`)
-  }
-  return false
 }
 
 /**
