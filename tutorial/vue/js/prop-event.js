@@ -79,6 +79,8 @@ function useLibrary(ms = 1000) {
 // directive
 // vnode hook vnodeMounted
 // teleport
+// unmount
+// {{a}}<span>Static</span>{{b}}
 Vue.createApp(App)
   .component(Child.name, Child)
   .mount('#app')
