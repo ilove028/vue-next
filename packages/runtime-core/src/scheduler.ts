@@ -32,7 +32,7 @@ let isFlushing = false
 let isFlushPending = false
 
 // 主任务队列，用于存储更新任务
-const queue: (SchedulerJob | null)[] = []
+const queue: SchedulerJob[] = []
 // 当前正在执行的任务在主任务队列中的索引
 let flushIndex = 0
 
@@ -115,7 +115,7 @@ function queueFlush() {
 export function invalidateJob(job: SchedulerJob) {
   const i = queue.indexOf(job)
   if (i > -1) {
-    queue[i] = null
+    queue.splice(i, 1)
   }
 }
 
@@ -235,9 +235,7 @@ function flushJobs(seen?: CountMap) {
   //    priority number)
   // 2. If a component is unmounted during a parent component's update,
   //    its update can be skipped.
-  // Jobs can never be null before flush starts, since they are only invalidated
-  // during execution of another flushed job.
-  queue.sort((a, b) => getId(a!) - getId(b!))
+  queue.sort((a, b) => getId(a) - getId(b))
 
   try {
     for (flushIndex = 0; flushIndex < queue.length; flushIndex++) {
