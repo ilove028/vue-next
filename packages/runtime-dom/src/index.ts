@@ -7,10 +7,13 @@ import {
   Renderer,
   HydrationRenderer,
   App,
-  RootHydrateFunction
+  RootHydrateFunction,
+  isRuntimeOnly,
+  DeprecationTypes,
+  compatUtils
 } from '@vue/runtime-core'
 import { nodeOps } from './nodeOps'
-import { patchProp, forcePatchProp } from './patchProp'
+import { patchProp } from './patchProp'
 // Importing from the compiler, will be tree-shaken in prod
 import { isFunction, isString, isHTMLTag, isSVGTag, extend } from '@vue/shared'
 
@@ -21,17 +24,20 @@ declare module '@vue/reactivity' {
   }
 }
 
-const rendererOptions = extend({ patchProp, forcePatchProp }, nodeOps)
+const rendererOptions = extend({ patchProp }, nodeOps)
 
 // lazy create the renderer - this makes core renderer logic tree-shakable
-// in case the user only imports reactivity utilities from  Vue.
-let renderer: Renderer<Element> | HydrationRenderer
+// in case the user only imports reactivity utilities from Vue.
+let renderer: Renderer<Element | ShadowRoot> | HydrationRenderer
 
 let enabledHydration = false
 
 function ensureRenderer() {
   // 这里rendererOptions来自浏览器node ops合并
-  return renderer || (renderer = createRenderer<Node, Element>(rendererOptions))
+  return (
+    renderer ||
+    (renderer = createRenderer<Node, Element | ShadowRoot>(rendererOptions))
+  )
 }
 
 function ensureHydrationRenderer() {
@@ -45,7 +51,7 @@ function ensureHydrationRenderer() {
 // use explicit type casts here to avoid import() calls in rolled-up d.ts
 export const render = ((...args) => {
   ensureRenderer().render(...args)
-}) as RootRenderFunction<Element>
+}) as RootRenderFunction<Element | ShadowRoot>
 
 export const hydrate = ((...args) => {
   ensureHydrationRenderer().hydrate(...args)
@@ -61,21 +67,41 @@ export const createApp = ((...args) => {
 
   if (__DEV__) {
     injectNativeTagCheck(app)
+    injectCompilerOptionsCheck(app)
   }
 
   const { mount } = app
   app.mount = (containerOrSelector: Element | ShadowRoot | string): any => {
     const container = normalizeContainer(containerOrSelector)
     if (!container) return
+
     const component = app._component
     // is not functional component has no render even has not template
     if (!isFunction(component) && !component.render && !component.template) {
+      // __UNSAFE__
+      // Reason: potential execution of JS expressions in in-DOM template.
+      // The user must make sure the in-DOM template is trusted. If it's
+      // rendered by the server, the template should not contain any user data.
       component.template = container.innerHTML
+      // 2.x compat check
+      if (__COMPAT__ && __DEV__) {
+        for (let i = 0; i < container.attributes.length; i++) {
+          const attr = container.attributes[i]
+          if (attr.name !== 'v-cloak' && /^(v-|:|@)/.test(attr.name)) {
+            compatUtils.warnDeprecation(
+              DeprecationTypes.GLOBAL_MOUNT_CONTAINER,
+              null
+            )
+            break
+          }
+        }
+      }
     }
+
     // clear content before mounting
     container.innerHTML = ''
     // this mount closure reference app component.
-    const proxy = mount(container)
+    const proxy = mount(container, false, container instanceof SVGElement)
     if (container instanceof Element) {
       container.removeAttribute('v-cloak')
       container.setAttribute('data-v-app', '')
@@ -91,13 +117,14 @@ export const createSSRApp = ((...args) => {
 
   if (__DEV__) {
     injectNativeTagCheck(app)
+    injectCompilerOptionsCheck(app)
   }
 
   const { mount } = app
   app.mount = (containerOrSelector: Element | ShadowRoot | string): any => {
     const container = normalizeContainer(containerOrSelector)
     if (container) {
-      return mount(container, true)
+      return mount(container, true, container instanceof SVGElement)
     }
   }
 
@@ -111,6 +138,44 @@ function injectNativeTagCheck(app: App) {
     value: (tag: string) => isHTMLTag(tag) || isSVGTag(tag),
     writable: false
   })
+}
+
+// dev only
+function injectCompilerOptionsCheck(app: App) {
+  if (isRuntimeOnly()) {
+    const isCustomElement = app.config.isCustomElement
+    Object.defineProperty(app.config, 'isCustomElement', {
+      get() {
+        return isCustomElement
+      },
+      set() {
+        warn(
+          `The \`isCustomElement\` config option is deprecated. Use ` +
+            `\`compilerOptions.isCustomElement\` instead.`
+        )
+      }
+    })
+
+    const compilerOptions = app.config.compilerOptions
+    const msg =
+      `The \`compilerOptions\` config option is only respected when using ` +
+      `a build of Vue.js that includes the runtime compiler (aka "full build"). ` +
+      `Since you are using the runtime-only build, \`compilerOptions\` ` +
+      `must be passed to \`@vue/compiler-dom\` in the build setup instead.\n` +
+      `- For vue-loader: pass it via vue-loader's \`compilerOptions\` loader option.\n` +
+      `- For vue-cli: see https://cli.vuejs.org/guide/webpack.html#modifying-options-of-a-loader\n` +
+      `- For vite: pass it via @vitejs/plugin-vue options. See https://github.com/vitejs/vite/tree/main/packages/plugin-vue#example-for-passing-options-to-vuecompiler-dom`
+
+    Object.defineProperty(app.config, 'compilerOptions', {
+      get() {
+        warn(msg)
+        return compilerOptions
+      },
+      set() {
+        warn(msg)
+      }
+    })
+  }
 }
 
 function normalizeContainer(
@@ -127,7 +192,8 @@ function normalizeContainer(
   }
   if (
     __DEV__ &&
-    container instanceof ShadowRoot &&
+    window.ShadowRoot &&
+    container instanceof window.ShadowRoot &&
     container.mode === 'closed'
   ) {
     warn(
@@ -136,6 +202,14 @@ function normalizeContainer(
   }
   return container as any
 }
+
+// Custom element support
+export {
+  defineCustomElement,
+  defineSSRCustomElement,
+  VueElement,
+  VueElementConstructor
+} from './apiCustomElement'
 
 // SFC CSS utilities
 export { useCssModule } from './helpers/useCssModule'

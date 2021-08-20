@@ -1,15 +1,16 @@
 import { ErrorCodes, callWithErrorHandling } from './errorHandling'
 import { isArray } from '@vue/shared'
-import { ComponentPublicInstance } from './componentPublicInstance'
+import { ComponentInternalInstance, getComponentName } from './component'
+import { warn } from './warning'
 
-export interface SchedulerJob {
-  (): void
-  /**
-   * unique job id, only present on raw effects, e.g. component render effect
-   */
+export interface SchedulerJob extends Function {
   id?: number
+  active?: boolean
+  computed?: boolean
   /**
-   * Indicates whether the job is allowed to recursively trigger itself.
+   * Indicates whether the effect is allowed to recursively trigger itself
+   * when managed by the scheduler.
+   *
    * By default, a job cannot trigger itself because some built-in method calls,
    * e.g. Array.prototype.push actually performs reads as well (#1740) which
    * can lead to confusing infinite loops.
@@ -22,11 +23,16 @@ export interface SchedulerJob {
    * stabilizes (#1727).
    */
   allowRecurse?: boolean
+  /**
+   * Attached by renderer.ts when setting up a component's render effect
+   * Used to obtain component information when reporting max recursive updates.
+   * dev only.
+   */
+  ownerInstance?: ComponentInternalInstance
 }
 
-export type SchedulerCb = Function & { id?: number }
-export type SchedulerCbs = SchedulerCb | SchedulerCb[]
-// 任务队列是否正在排空
+export type SchedulerJobs = SchedulerJob | SchedulerJob[]
+
 let isFlushing = false
 // 微任务已创建，任务队列等待排空
 let isFlushPending = false
@@ -38,18 +44,16 @@ let flushIndex = 0
 
 // 框架运行过程中产生的前置回调任务，比如一些特定的生命周期
 // 这些回调任务是在主任务队列queue开始排空前批量排空执行的
-const pendingPreFlushCbs: SchedulerCb[] = []
+const pendingPreFlushCbs: SchedulerJob[] = []
 // 当前激活的前置回调任务
-let activePreFlushCbs: SchedulerCb[] | null = null
+let activePreFlushCbs: SchedulerJob[] | null = null
 // 当前前置回调任务在队列中的索引
 let preFlushIndex = 0
-
 // 框架运行过程中产生的后置回调任务，比如一些特定的生命周期（onMounted等）
 // 这些回调任务是在主任务队列queue排空后批量排空执行的
-const pendingPostFlushCbs: SchedulerCb[] = []
+const pendingPostFlushCbs: SchedulerJob[] = []
 // 当前激活的后置回调任务
-let activePostFlushCbs: SchedulerCb[] | null = null
-// 当前后置回调任务在队列中的索引
+let activePostFlushCbs: SchedulerJob[] | null = null
 let postFlushIndex = 0
 
 // 当前激活的后置回调任务
@@ -62,14 +66,32 @@ let currentPreFlushParentJob: SchedulerJob | null = null
 // 同一个任务递归执行的上限次数
 const RECURSION_LIMIT = 100
 // 记录每个任务执行的次数
-type CountMap = Map<SchedulerJob | SchedulerCb, number>
+type CountMap = Map<SchedulerJob, number>
 
-export function nextTick(
-  this: ComponentPublicInstance | void,
-  fn?: () => void
+export function nextTick<T = void>(
+  this: T,
+  fn?: (this: T) => void
 ): Promise<void> {
   const p = currentFlushPromise || resolvedPromise
   return fn ? p.then(this ? fn.bind(this) : fn) : p
+}
+
+// #2768
+// Use binary-search to find a suitable position in the queue,
+// so that the queue maintains the increasing order of job's id,
+// which can prevent the job from being skipped and also can avoid repeated patching.
+function findInsertionIndex(id: number) {
+  // the start index should be `flushIndex + 1`
+  let start = flushIndex + 1
+  let end = queue.length
+
+  while (start < end) {
+    const middle = (start + end) >>> 1
+    const middleJobId = getId(queue[middle])
+    middleJobId < id ? (start = middle + 1) : (end = middle)
+  }
+
+  return start
 }
 
 export function queueJob(job: SchedulerJob) {
@@ -92,8 +114,11 @@ export function queueJob(job: SchedulerJob) {
       )) &&
     job !== currentPreFlushParentJob
   ) {
-    queue.push(job)
-    // 创建清队微任务
+    if (job.id == null) {
+      queue.push(job)
+    } else {
+      queue.splice(findInsertionIndex(job.id), 0, job)
+    }
     queueFlush()
   }
 }
@@ -114,15 +139,15 @@ function queueFlush() {
 
 export function invalidateJob(job: SchedulerJob) {
   const i = queue.indexOf(job)
-  if (i > -1) {
+  if (i > flushIndex) {
     queue.splice(i, 1)
   }
 }
 
 function queueCb(
-  cb: SchedulerCbs,
-  activeQueue: SchedulerCb[] | null,
-  pendingQueue: SchedulerCb[],
+  cb: SchedulerJobs,
+  activeQueue: SchedulerJob[] | null,
+  pendingQueue: SchedulerJob[],
   index: number
 ) {
   if (!isArray(cb)) {
@@ -130,7 +155,7 @@ function queueCb(
       !activeQueue ||
       !activeQueue.includes(
         cb,
-        (cb as SchedulerJob).allowRecurse ? index + 1 : index
+        cb.allowRecurse ? index + 1 : index
       )
     ) {
       pendingQueue.push(cb)
@@ -144,11 +169,11 @@ function queueCb(
   queueFlush()
 }
 
-export function queuePreFlushCb(cb: SchedulerCb) {
+export function queuePreFlushCb(cb: SchedulerJob) {
   queueCb(cb, activePreFlushCbs, pendingPreFlushCbs, preFlushIndex)
 }
 
-export function queuePostFlushCb(cb: SchedulerCbs) {
+export function queuePostFlushCb(cb: SchedulerJobs) {
   queueCb(cb, activePostFlushCbs, pendingPostFlushCbs, postFlushIndex)
 }
 
@@ -168,8 +193,11 @@ export function flushPreFlushCbs(
       preFlushIndex < activePreFlushCbs.length;
       preFlushIndex++
     ) {
-      if (__DEV__) {
+      if (
+        __DEV__ &&
         checkRecursiveUpdates(seen!, activePreFlushCbs[preFlushIndex])
+      ) {
+        continue
       }
       activePreFlushCbs[preFlushIndex]()
     }
@@ -204,8 +232,11 @@ export function flushPostFlushCbs(seen?: CountMap) {
       postFlushIndex < activePostFlushCbs.length;
       postFlushIndex++
     ) {
-      if (__DEV__) {
+      if (
+        __DEV__ &&
         checkRecursiveUpdates(seen!, activePostFlushCbs[postFlushIndex])
+      ) {
+        continue
       }
       activePostFlushCbs[postFlushIndex]()
     }
@@ -214,7 +245,7 @@ export function flushPostFlushCbs(seen?: CountMap) {
   }
 }
 
-const getId = (job: SchedulerJob | SchedulerCb) =>
+const getId = (job: SchedulerJob): number =>
   job.id == null ? Infinity : job.id
 
 // isFlushingPending状态表示清队微任务已创建，此时js主线程还可能会有其他的同步任务未执行完，因此在主线程同步任务执行完毕前isFlushingPending一直为true，当flushJobs开始执行时，表明清队微任务开始执行，此时isFlushingPending置为false，isFlushing置为true，表示正在清队中。
@@ -240,15 +271,11 @@ function flushJobs(seen?: CountMap) {
   try {
     for (flushIndex = 0; flushIndex < queue.length; flushIndex++) {
       const job = queue[flushIndex]
-      if (job) {
-        if (__DEV__) {
-          checkRecursiveUpdates(seen!, job)
+      if (job && job.active !== false) {
+        if (__DEV__ && checkRecursiveUpdates(seen!, job)) {
+          continue
         }
-        // 执行当前更新任务
-        // 注意：在isFlushing = true和isFlushing = false之间，
-        // 主线程在批量执行更新任务（job），但是job中可能会引入新的
-        // 更新任务入队，此时queue长度会变化，因此下面需要递归清空queue
-        // 直到队列中的所有任务全部执行完毕
+        // console.log(`running:`, job.id)
         callWithErrorHandling(job, null, ErrorCodes.SCHEDULER)
       }
     }
@@ -265,25 +292,34 @@ function flushJobs(seen?: CountMap) {
     // 由于清队期间（isFlushing）也有可能会有任务入队，因此会导致按照实微任务开始执行时
     // 的队长度遍历清队，可能会导致无法彻底清干净。因此需要递归的清空队伍，保证一次清队
     // 微任务中所有任务队列都被全部清空
-    if (queue.length || pendingPostFlushCbs.length) {
+    if (
+      queue.length ||
+      pendingPreFlushCbs.length ||
+      pendingPostFlushCbs.length
+    ) {
       flushJobs(seen)
     }
   }
 }
 
-function checkRecursiveUpdates(seen: CountMap, fn: SchedulerJob | SchedulerCb) {
+function checkRecursiveUpdates(seen: CountMap, fn: SchedulerJob) {
   if (!seen.has(fn)) {
     seen.set(fn, 1)
   } else {
     const count = seen.get(fn)!
     if (count > RECURSION_LIMIT) {
-      throw new Error(
-        `Maximum recursive updates exceeded. ` +
+      const instance = fn.ownerInstance
+      const componentName = instance && getComponentName(instance.type)
+      warn(
+        `Maximum recursive updates exceeded${
+          componentName ? ` in component <${componentName}>` : ``
+        }. ` +
           `This means you have a reactive effect that is mutating its own ` +
           `dependencies and thus recursively triggering itself. Possible sources ` +
           `include component template, render function, updated hook or ` +
           `watcher source function.`
       )
+      return true
     } else {
       seen.set(fn, count + 1)
     }
