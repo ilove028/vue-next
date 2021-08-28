@@ -28,17 +28,31 @@
 
 // a.value = 'Ricky'
 
-const aRef = VueReactivity.ref(0)
-const bRef = VueReactivity.ref(1)
+// const aRef = VueReactivity.ref(0)
+// const bRef = VueReactivity.ref(1)
+
+// VueReactivity.effect(() => {
+//   aRef.value = bRef.value * 2
+//   console.log(1)
+// })
+
+// VueReactivity.effect(() => {
+//   bRef.value = aRef.value * 2
+//   console.log(2)
+// })
+
+// bRef.value = 2
+
+const a = VueReactivity.reactive([0, 1])
 
 VueReactivity.effect(() => {
-  aRef.value = bRef.value * 2
-  console.log(1)
+  console.log(a[0])
 })
 
-VueReactivity.effect(() => {
-  bRef.value = aRef.value * 2
-  console.log(2)
-})
+a.push(1)
 
-bRef.value = 2
+a.includes(1)
+
+a[3] = 4
+
+a[0] = '111'

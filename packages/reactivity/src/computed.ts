@@ -20,6 +20,9 @@ export interface WritableComputedOptions<T> {
   set: ComputedSetter<T>
 }
 
+/**
+ * A ref which has a effect property
+ */
 class ComputedRefImpl<T> {
   public dep?: Dep = undefined
 
