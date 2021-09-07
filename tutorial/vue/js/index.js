@@ -98,17 +98,22 @@ const App = {
     useWindow: Boolean
   },
   setup(props) {
-    const count = ref(0)
-    const { render } = useWindow(0, 0, 200, 200)
-
     return () => {
-      const r = context =>
-        h('button', { onClick: () => count.value++ }, count.value)
-      if (props.useWindow) {
-        return render(r)
-      } else {
-        return r()
-      }
+      return h(
+        'div',
+        {
+          onVnodeMounted() {
+            console.log('Div mounted')
+          }
+        },
+        [
+          h('span', {
+            onVnodeMounted() {
+              console.log('span mounted')
+            }
+          })
+        ]
+      )
     }
   }
 }

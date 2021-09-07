@@ -772,6 +772,7 @@ function baseCreateRenderer(
       dirs
     ) {
       queuePostRenderEffect(() => {
+        // flushPostFlushCbs sort the invoke order but getId return infinity so it does nothing.
         vnodeHook && invokeVNodeHook(vnodeHook, parentComponent, vnode)
         needCallTransitionHooks && transition!.enter(el)
         dirs && invokeDirectiveHook(vnode, null, parentComponent, 'mounted')

@@ -3,6 +3,8 @@
 [源码解析](https://www.yuque.com/luchx/ziwg5m/bgtwip)
 [virtual DOM](https://zhuanlan.zhihu.com/p/134593762)
 [virtual DOM](https://segmentfault.com/a/1190000022442171)
+[Vue diff](https://www.jianshu.com/p/eb08022ee488)
+[Vue Compiler](https://zhuanlan.zhihu.com/p/150732926)
 
 template-explorer
 https://template-explorer.vuejs.org 2.x
