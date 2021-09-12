@@ -114,9 +114,9 @@ const { ref, h } = Vue
 // }
 const App = {
   template: `
-    <button @click="count++">
-      {{ count }}
-    </button>
+    <div>
+      <p>This is a static demo</p>
+    </div>
   `,
   setup() {
     const count = ref(0)
