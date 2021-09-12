@@ -93,23 +93,36 @@
 // keep alive suspense
 // render 闭包引用着hosit 但是啥时运行呢？ 如果是编译好的render
 const { ref, h } = Vue
-const App = {
-  props: {
-    useWindow: Boolean
-  },
-  setup(props) {
-    const count = ref(0)
-    const { render } = useWindow(0, 0, 200, 200)
+// const App = {
+//   props: {
+//     useWindow: Boolean
+//   },
+//   setup(props) {
+//     const count = ref(0)
+//     const { render } = useWindow(0, 0, 200, 200)
 
-    return () => {
-      const r = context =>
-        h('button', { onClick: () => count.value++ }, count.value)
-      if (props.useWindow) {
-        return render(r)
-      } else {
-        return r()
-      }
-    }
+//     return () => {
+//       const r = context =>
+//         h('button', { onClick: () => count.value++ }, count.value)
+//       if (props.useWindow) {
+//         return render(r)
+//       } else {
+//         return r()
+//       }
+//     }
+//   }
+// }
+const App = {
+  template: `
+    <button @click="count++">
+      {{ count }}
+    </button>
+  `,
+  setup() {
+    const count = ref(0)
+
+    return { count }
   }
 }
-Vue.createApp(App, { useWindow: true }).mount('#app')
+
+Vue.createApp(App, {}).mount('#app')
