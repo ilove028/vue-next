@@ -56,6 +56,7 @@
       `
         <div>
           <span>1</span>
+          <Com>{{ data }}</Com>
         </div>
       `,
       {
