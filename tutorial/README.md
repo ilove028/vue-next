@@ -9,7 +9,7 @@
 [Vue Compiler](https://blog.csdn.net/More_Action/article/details/109802319?utm_medium=distribute.pc_relevant.none-task-blog-2~default~baidujs_title~default-1.no_search_link&spm=1001.2101.3001.4242)
 [中文网站有源码解析相关库](https://www.vue3js.cn/reactivity/reactive.html)
 
-
+[Vite源码](https://vite-design.surge.sh/guide/)
 [React源码](https://github.com/Bogdan-Lyashenko/Under-the-hood-ReactJS)
 
 template-explorer
