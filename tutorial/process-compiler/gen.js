@@ -10,7 +10,7 @@ const FUNCTION_CALL_NODE = 1 << 5 // 函数调用节点
 const EXPRESSION_NODE = 1 << 6 // 表达式节点
 const TRY_CATCH_NODE = 1 << 7 // try 节点
 
-export function generate(node, context) {
+export default function generate(node, context) {
   while (node) {
     const { type } = node
 
