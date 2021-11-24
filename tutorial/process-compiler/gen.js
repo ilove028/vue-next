@@ -1,14 +1,15 @@
-const NORMAL_FUNCTION = 1 // 普通类型
-const ASYNC_FUNCTION = 1 << 1 // Async 函数
-const ARROW_FUNCTION = 1 << 2 // 箭头函数
+export const NORMAL_FUNCTION = 1 // 普通类型
+export const ASYNC_FUNCTION = 1 << 1 // Async 函数
+export const ARROW_FUNCTION = 1 << 2 // 箭头函数
 
-const ASSIGNMENT_NODE = 1 // 赋值节点
-const FUNCTION_NODE = 1 << 2 // 函数节点
-const IF_NODE = 1 << 3 // if 节点
-const FOR_NODE = 1 << 4 // for 节点
-const FUNCTION_CALL_NODE = 1 << 5 // 函数调用节点
-const EXPRESSION_NODE = 1 << 6 // 表达式节点
-const TRY_CATCH_NODE = 1 << 7 // try 节点
+export const ASSIGNMENT_NODE = 1 // 赋值节点
+export const FUNCTION_NODE = 1 << 2 // 函数节点
+export const IF_NODE = 1 << 3 // if 节点
+export const FOR_NODE = 1 << 4 // for 节点
+export const FUNCTION_CALL_NODE = 1 << 5 // 函数调用节点
+export const EXPRESSION_NODE = 1 << 6 // 表达式节点
+export const TRY_CATCH_NODE = 1 << 7 // try 节点
+export const RETURN_NODE = 1 << 8 // return
 
 export default function generate(node, context) {
   while (node) {
@@ -59,7 +60,7 @@ export function genAssignment(node, context) {
 
   context.code += `let ${name} = ${
     isStatic ? JSON.stringify(content) : content
-  };\r\n`
+  };`
 }
 
 /**
@@ -80,10 +81,6 @@ export function genFunction(funNode, context) {
     next,
     meta
   } = funNode
-
-  context.code += `${funType & ASYNC_FUNCTION ? 'async ' : ''}${
-    funType & NORMAL_FUNCTION ? 'function' : ''
-  } ${funType & NORMAL_FUNCTION && name ? name : ''}(`
 
   switch (funType) {
     case NORMAL_FUNCTION: {
@@ -106,11 +103,9 @@ export function genFunction(funNode, context) {
 
     context.code += `${i > 0 ? ' ,' : ''}${name}`
   }
-  context.code += ') {\r\n'
+  context.code += `)${funType | ARROW_FUNCTION ? ' =>' : ''} {\r\n`
 
   generate(body, context)
-
-  context.code += `\r\n return`
 
   context.code += `\r\n}`
 }
@@ -126,15 +121,19 @@ export function genIf(node, context) {
   for (let i = 0; branchs && i < branchs.length; i++) {
     const { condition, body } = branchs[i]
 
-    if ((i = 0)) {
-      context.code += `if (${genExpression(condition)}) {\r\n`
+    if (i === 0) {
+      context.code += `if (`
+      genExpression(condition, context)
+      context.code += `) {\r\n`
     } else if (condition) {
-      context.code += `else if (${genExpression(condition)}) {\r\n`
+      context.code += ` else if (`
+      genExpression(condition, context)
+      context.code += `) {\r\n`
     } else {
-      context.code += 'else {\r\n'
+      context.code += ' else {\r\n'
     }
 
-    context.code += generate(body, context)
+    generate(body, context)
 
     context.code += '\r\n}'
   }
@@ -147,17 +146,17 @@ export function genFor(node, context) {
 
   context.code += 'for ('
 
-  context.code += genAssignment(assignment, context)
+  genAssignment(assignment, context)
+  context.code += ' '
+  genConditionalExpression(condition, context)
 
-  context.code += genConditionalExpression(condition, context)
+  context.code += '; '
 
-  context.code += ';'
+  genExpression(iterator, context)
 
-  context.code += genExpression(iterator)
+  context.code += ') {\r\n'
 
-  context.code += ';) {\r\n'
-
-  context.code += generate(body)
+  generate(body, context)
 
   context.code += '\r\n}'
 }
@@ -208,16 +207,12 @@ export function genTryCatch(node, context) {
   }
 }
 
-export function genConditionalExpression(condition, context) {
-  const { parts } = condition
-
+export function genConditionalExpression(parts, context) {
   for (let i = 0; parts && i < parts.length; i++) {
     const { concat, expression } = parts[i]
 
-    context.code += `${concat ? concat : ''} ${genExpression(
-      expression,
-      context
-    )}`
+    context.code += `${concat ? ` ${concat}` : ''}`
+    genExpression(expression, context)
   }
 }
 
